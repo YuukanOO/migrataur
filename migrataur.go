@@ -16,12 +16,16 @@ func New(opts *Options) *Migrataur {
 	return &Migrataur{options: extendOptions(opts)}
 }
 
+func (m *Migrataur) getMigrationFullpath(name string) string {
+	return filepath.Join(m.options.Directory,
+		fmt.Sprintf("%s_%s%s", m.options.UnicityGenerator(), name, m.options.Extension))
+}
+
 // NewMigration creates a new migration in the configured folder and returns the instance of the migration
 // attached to the newly created file
 func (m *Migrataur) NewMigration(name string) *Migration {
 
-	fullPath := filepath.Join(m.options.Directory,
-		fmt.Sprintf("%s_%s%s", m.options.UnicityGenerator(), name, m.options.Extension))
+	fullPath := m.getMigrationFullpath(name)
 
 	migration := newMigration(filepath.Base(fullPath))
 
