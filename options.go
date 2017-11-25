@@ -18,6 +18,10 @@ func extendOptions(opts *Options) *Options {
 
 	dir, extension, generator := opts.Directory, opts.Extension, opts.UnicityGenerator
 
+	if dir == "" {
+		dir = "./migrations"
+	}
+
 	absPath, err := filepath.Abs(dir)
 
 	if err != nil {

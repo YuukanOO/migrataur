@@ -8,9 +8,7 @@ import (
 )
 
 func main() {
-	mig := migrataur.New(&migrataur.Options{
-		Directory: "./migrations",
-	})
+	mig := migrataur.New(&migrataur.Options{})
 
 	cmd, args := os.Args[1], os.Args[2:]
 
