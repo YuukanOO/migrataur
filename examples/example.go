@@ -16,7 +16,11 @@ func main() {
 	case "new":
 		mig.NewMigration(args[0])
 		break
+	case "list":
+		for _, v := range mig.GetAll() {
+			//fmt.Println(v.name)
+			fmt.Println(v)
+		}
+		break
 	}
-
-	fmt.Println(cmd, args, mig)
 }

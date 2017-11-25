@@ -3,14 +3,7 @@ package migrataur
 import (
 	"fmt"
 	"os"
-	"path"
-)
-
-const (
-	upStart   = "-- +migrataur up"
-	upEnd     = "-- -migrataur up"
-	downStart = "-- +migrataur down"
-	downEnd   = "-- -migrataur down"
+	"path/filepath"
 )
 
 // Migrataur represents an instance configurated for a particular use
@@ -27,19 +20,10 @@ func New(opts *Options) *Migrataur {
 // attached to the newly created file
 func (m *Migrataur) NewMigration(name string) *Migration {
 
-	fullPath := path.Join(m.options.Directory,
+	fullPath := filepath.Join(m.options.Directory,
 		fmt.Sprintf("%s_%s%s", m.options.UnicityGenerator(), name, m.options.Extension))
 
-	content := fmt.Sprintf(`-- Migrations %s
-%s
-
-%s
-
-
-%s
-
-%s
-`, path.Base(fullPath), upStart, upEnd, downStart, downEnd)
+	migration := newMigration(filepath.Base(fullPath))
 
 	file, err := os.Create(fullPath)
 
@@ -47,11 +31,22 @@ func (m *Migrataur) NewMigration(name string) *Migration {
 		panic(err)
 	}
 
-	_, err = file.WriteString(content)
+	migrationData, err := migration.MarshalText()
 
 	if err != nil {
 		panic(err)
 	}
 
-	return nil
+	_, err = file.Write(migrationData)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return migration
+}
+
+// GetAll retrieve all migrations for the current instance. It will list applied and pending migrations
+func (m *Migrataur) GetAll() []*Migration {
+	return []*Migration{}
 }

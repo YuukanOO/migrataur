@@ -2,6 +2,7 @@ package migrataur
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -25,6 +26,10 @@ func extendOptions(opts *Options) *Options {
 
 	if err != nil {
 		panic(fmt.Sprintf("Could not retrieve the absolute path for %s", dir))
+	}
+
+	if err = os.MkdirAll(absPath, os.ModeDir); err != nil {
+		panic(err)
 	}
 
 	if extension == "" {
