@@ -14,7 +14,6 @@ type Options struct {
 }
 
 func extendOptions(opts *Options) *Options {
-	result := &Options{}
 
 	dir, extension, generator := opts.Directory, opts.Extension, opts.UnicityGenerator
 
@@ -40,9 +39,9 @@ func extendOptions(opts *Options) *Options {
 		generator = currentTimestamp
 	}
 
-	result.Directory = absPath
-	result.Extension = extension
-	result.UnicityGenerator = generator
-
-	return result
+	return &Options{
+		Directory:        absPath,
+		Extension:        extension,
+		UnicityGenerator: generator,
+	}
 }
