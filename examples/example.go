@@ -16,11 +16,11 @@ func main() {
 	switch cmd {
 	case "new":
 		mig.NewMigration(args[0])
-		break
 	case "list":
 		for _, v := range mig.GetAll() {
 			fmt.Println(v)
 		}
-		break
+	case "migrate":
+		mig.MigrateToLatest()
 	}
 }

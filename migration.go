@@ -50,6 +50,11 @@ func (m *Migration) hasBeenAppliedAt(time time.Time) {
 	m.appliedAt = &time
 }
 
+// HasBeenApplied check if the migration has already been applied in the database
+func (m *Migration) HasBeenApplied() bool {
+	return m.appliedAt != nil
+}
+
 // MarshalText serialize this migration
 func (m *Migration) MarshalText() (text []byte, err error) {
 	content := fmt.Sprintf(`-- migration %s
@@ -76,16 +81,12 @@ func (m *Migration) UnmarshalText(text []byte) error {
 		switch lines[i] {
 		case upStart:
 			upFrom = i
-			break
 		case upEnd:
 			m.upStr = strings.Join(lines[upFrom+1:i], "\n")
-			break
 		case downStart:
 			downFrom = i
-			break
 		case downEnd:
 			m.downStr = strings.Join(lines[downFrom+1:i], "\n")
-			break
 		}
 	}
 

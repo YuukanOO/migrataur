@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 // Migrataur represents an instance configurated for a particular use
@@ -115,4 +116,21 @@ func (m *Migrataur) GetAll() []*Migration {
 	}
 
 	return fileSystemMigrations
+}
+
+// MigrateToLatest migrates the database to the latest version
+func (m *Migrataur) MigrateToLatest() {
+	for _, migration := range m.GetAll() {
+		if migration.HasBeenApplied() {
+			continue
+		}
+
+		if err := m.adapter.Exec(migration.upStr); err != nil {
+			panic(err)
+		}
+
+		if err := m.adapter.AddMigration(migration.name, time.Now()); err != nil {
+			panic(err)
+		}
+	}
 }
