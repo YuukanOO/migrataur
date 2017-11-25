@@ -5,10 +5,11 @@ import (
 	"os"
 
 	"github.com/YuukanOO/migrataur"
+	"github.com/YuukanOO/migrataur/adapters/mock"
 )
 
 func main() {
-	mig := migrataur.New(&migrataur.Options{})
+	mig := migrataur.New(&mock.Adapter{}, &migrataur.Options{})
 
 	cmd, args := os.Args[1], os.Args[2:]
 
@@ -18,7 +19,6 @@ func main() {
 		break
 	case "list":
 		for _, v := range mig.GetAll() {
-			//fmt.Println(v.name)
 			fmt.Println(v)
 		}
 		break

@@ -2,6 +2,7 @@ package migrataur
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -26,6 +27,29 @@ func newMigration(name string) *Migration {
 	}
 }
 
+// NewAdapterMigration instantiates a new migration. It should be used exclusively
+// by adapters
+func NewAdapterMigration(name string, appliedAt time.Time) *Migration {
+	return &Migration{
+		name:      name,
+		appliedAt: &appliedAt,
+	}
+}
+
+func (m *Migration) String() string {
+	ticked := " "
+
+	if m.appliedAt != nil {
+		ticked = "✓"
+	}
+
+	return fmt.Sprintf("[%s]\t%s", ticked, m.name)
+}
+
+func (m *Migration) hasBeenAppliedAt(time time.Time) {
+	m.appliedAt = &time
+}
+
 // MarshalText serialize this migration
 func (m *Migration) MarshalText() (text []byte, err error) {
 	content := fmt.Sprintf(`-- Migrations %s
@@ -44,5 +68,26 @@ func (m *Migration) MarshalText() (text []byte, err error) {
 
 // UnmarshalText deserialize a migration
 func (m *Migration) UnmarshalText(text []byte) error {
+	lines := strings.Split(string(text), "\n")
+
+	upFrom, downFrom := 0, 0
+
+	for i := 0; i < len(lines); i++ {
+		switch lines[i] {
+		case upStart:
+			upFrom = i
+			break
+		case upEnd:
+			m.upStr = strings.Join(lines[upFrom+1:i], "\n")
+			break
+		case downStart:
+			downFrom = i
+			break
+		case downEnd:
+			m.downStr = strings.Join(lines[downFrom+1:i], "\n")
+			break
+		}
+	}
+
 	return nil
 }

@@ -16,7 +16,7 @@ type Options struct {
 	UnicityGenerator func() string
 }
 
-func extendOptions(opts *Options) *Options {
+func extendOptionsAndSanitize(opts *Options) *Options {
 
 	dir, extension, generator := opts.Directory, opts.Extension, opts.UnicityGenerator
 
