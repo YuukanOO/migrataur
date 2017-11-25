@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // Options represents migrataur options to give to an instance
@@ -41,7 +43,7 @@ func extendOptions(opts *Options) *Options {
 	}
 
 	if generator == nil {
-		generator = currentTimestamp
+		generator = func() string { return strconv.FormatInt(time.Now().Unix(), 10) }
 	}
 
 	return &Options{
