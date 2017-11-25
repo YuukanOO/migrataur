@@ -52,7 +52,7 @@ func (m *Migration) hasBeenAppliedAt(time time.Time) {
 
 // MarshalText serialize this migration
 func (m *Migration) MarshalText() (text []byte, err error) {
-	content := fmt.Sprintf(`-- Migrations %s
+	content := fmt.Sprintf(`-- migration %s
 %s
 %s
 %s
