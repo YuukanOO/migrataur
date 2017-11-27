@@ -24,7 +24,7 @@ func New(adapter Adapter, opts *Options) *Migrataur {
 
 func (m *Migrataur) getMigrationFullpath(name string) string {
 	return filepath.Join(m.options.Directory,
-		fmt.Sprintf("%s_%s%s", m.options.UnicityGenerator(), name, m.options.Extension))
+		fmt.Sprintf("%s_%s%s", m.options.SequenceGenerator(), name, m.options.Extension))
 }
 
 // NewMigration creates a new migration in the configured folder and returns the instance of the migration

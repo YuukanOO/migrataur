@@ -11,14 +11,14 @@ import (
 
 // Options represents migrataur options to give to an instance
 type Options struct {
-	Directory        string
-	Extension        string
-	UnicityGenerator func() string
+	Directory         string
+	Extension         string
+	SequenceGenerator func() string
 }
 
 func extendOptionsAndSanitize(opts *Options) *Options {
 
-	dir, extension, generator := opts.Directory, opts.Extension, opts.UnicityGenerator
+	dir, extension, generator := opts.Directory, opts.Extension, opts.SequenceGenerator
 
 	if dir == "" {
 		dir = "./migrations"
@@ -47,8 +47,8 @@ func extendOptionsAndSanitize(opts *Options) *Options {
 	}
 
 	return &Options{
-		Directory:        absPath,
-		Extension:        extension,
-		UnicityGenerator: generator,
+		Directory:         absPath,
+		Extension:         extension,
+		SequenceGenerator: generator,
 	}
 }
