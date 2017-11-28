@@ -111,14 +111,14 @@ func (m *Migrataur) GetAll() []*Migration {
 		migrationsMap[m.name] = m
 	}
 
-	for _, m := range adapterMigrations {
-		fsMigration, ok := migrationsMap[m.name]
+	for _, mig := range adapterMigrations {
+		fsMigration, ok := migrationsMap[mig.name]
 
 		if !ok {
-			panic(fmt.Sprintf("The migration %s was not found in the migrations directory!", m.name))
+			m.options.Logger.Panicf("The migration %s was not found in the migrations directory!", mig.name)
 		}
 
-		fsMigration.hasBeenAppliedAt(*m.appliedAt)
+		fsMigration.hasBeenAppliedAt(*mig.appliedAt)
 	}
 
 	sortMigrations(fileSystemMigrations)

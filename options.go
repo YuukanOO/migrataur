@@ -1,7 +1,6 @@
 package migrataur
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -38,6 +37,10 @@ func extendOptionsAndSanitize(opts *Options) *Options {
 
 	dir, extension, generator, logger := opts.Directory, opts.Extension, opts.SequenceGenerator, opts.Logger
 
+	if logger == nil {
+		logger = log.New(os.Stdout, "", log.LstdFlags)
+	}
+
 	if dir == "" {
 		dir = "./migrations"
 	}
@@ -45,11 +48,11 @@ func extendOptionsAndSanitize(opts *Options) *Options {
 	absPath, err := filepath.Abs(dir)
 
 	if err != nil {
-		panic(fmt.Sprintf("Could not retrieve the absolute path for %s", dir))
+		logger.Panicf("Could not retrieve the absolute path for %s", dir)
 	}
 
 	if err = os.MkdirAll(absPath, os.ModeDir); err != nil {
-		panic(err)
+		logger.Panic(err)
 	}
 
 	if extension == "" {
@@ -62,10 +65,6 @@ func extendOptionsAndSanitize(opts *Options) *Options {
 
 	if generator == nil {
 		generator = func() string { return strconv.FormatInt(time.Now().Unix(), 10) }
-	}
-
-	if logger == nil {
-		logger = log.New(os.Stdout, "", log.LstdFlags)
 	}
 
 	return &Options{
