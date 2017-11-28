@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -118,19 +119,57 @@ func (m *Migrataur) GetAll() []*Migration {
 	return fileSystemMigrations
 }
 
+func getMigrationRange(rangeStr string) (start, end string) {
+	if rangeStr == "" {
+		return "", ""
+	}
+
+	splitted := strings.Split(rangeStr, "..")
+
+	if len(splitted) == 1 {
+		return splitted[0], ""
+	}
+
+	return splitted[0], splitted[1]
+}
+
+// Migrate migrates the database.
+// rangeOrName can be the exact migration name or a range such as <migration>..<another migration name>
+func (m *Migrataur) Migrate(rangeOrName string) {
+	start, end := getMigrationRange(rangeOrName)
+
+	for _, migration := range m.GetAll() {
+		if strings.Contains(migration.name, start) {
+			m.applyMigration(migration)
+		} else {
+			if end != "" && start != end {
+				m.applyMigration(migration)
+
+				if strings.Contains(migration.name, end) {
+					break
+				}
+			}
+		}
+	}
+}
+
+func (m *Migrataur) applyMigration(migration *Migration) {
+	if migration.HasBeenApplied() {
+		return
+	}
+
+	if err := m.adapter.Exec(migration.upStr); err != nil {
+		panic(err)
+	}
+
+	if err := m.adapter.AddMigration(migration.name, time.Now()); err != nil {
+		panic(err)
+	}
+}
+
 // MigrateToLatest migrates the database to the latest version
 func (m *Migrataur) MigrateToLatest() {
 	for _, migration := range m.GetAll() {
-		if migration.HasBeenApplied() {
-			continue
-		}
-
-		if err := m.adapter.Exec(migration.upStr); err != nil {
-			panic(err)
-		}
-
-		if err := m.adapter.AddMigration(migration.name, time.Now()); err != nil {
-			panic(err)
-		}
+		m.applyMigration(migration)
 	}
 }
