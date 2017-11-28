@@ -6,6 +6,8 @@ Instead of providing a CLI, it exposes a simple API that you can use in your own
 
 ## Adapters
 
+// TODO
+
 ## Contributing
 
 Contribution are much appreciated!
