@@ -117,3 +117,27 @@ func TestMigrataur(t *testing.T) {
 		}
 	}
 }
+
+func TestMigrationsSorting(t *testing.T) {
+	migrations := []*Migration{
+		newMigration("migration03"),
+		newMigration("migration04"),
+		newMigration("migration02"),
+		newMigration("migration01"),
+	}
+
+	expected := []string{
+		"migration01",
+		"migration02",
+		"migration03",
+		"migration04",
+	}
+
+	sortMigrations(migrations)
+
+	for i := 0; i < len(expected); i++ {
+		if migrations[i].name != expected[i] {
+			t.Errorf("Expecting %s, got %s when sorted", expected[i], migrations[i].name)
+		}
+	}
+}

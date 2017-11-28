@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
@@ -89,6 +90,10 @@ func (m *Migrataur) getAllFromFilesystem() []*Migration {
 	return migrations
 }
 
+func sortMigrations(migrations []*Migration) {
+	sort.Sort(ByName(migrations))
+}
+
 // GetAll retrieve all migrations for the current instance. It will list applied and pending migrations
 func (m *Migrataur) GetAll() []*Migration {
 
@@ -115,6 +120,8 @@ func (m *Migrataur) GetAll() []*Migration {
 
 		fsMigration.hasBeenAppliedAt(*m.appliedAt)
 	}
+
+	sortMigrations(fileSystemMigrations)
 
 	return fileSystemMigrations
 }
@@ -169,14 +176,14 @@ func (m *Migrataur) applyMigration(migration *Migration) {
 	}
 
 	if err := m.adapter.Exec(migration.upStr); err != nil {
-		m.options.Logger.Panic(err)
+		m.options.Logger.Panicf("✗\t%s", err)
 	}
 
 	if err := m.adapter.AddMigration(migration.name, time.Now()); err != nil {
-		m.options.Logger.Panic(err)
+		m.options.Logger.Panicf("✗\t%s", err)
 	}
 
-	m.options.Logger.Printf("%s applied", migration.name)
+	m.options.Logger.Printf("✓\t%s", migration.name)
 }
 
 // MigrateToLatest migrates the database to the latest version

@@ -27,6 +27,13 @@ func newMigration(name string) *Migration {
 	}
 }
 
+// ByName sort an array of migrations by their name, use it with sort.Sort and the like
+type ByName []*Migration
+
+func (m ByName) Len() int           { return len(m) }
+func (m ByName) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
+func (m ByName) Less(i, j int) bool { return m[i].name < m[j].name }
+
 // NewAdapterMigration instantiates a new migration. It should be used exclusively
 // by adapters
 func NewAdapterMigration(name string, appliedAt time.Time) *Migration {
