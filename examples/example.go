@@ -6,12 +6,12 @@ import (
 	"os"
 
 	"github.com/YuukanOO/migrataur"
-	m_sql "github.com/YuukanOO/migrataur/adapters/sql"
+	adapter "github.com/YuukanOO/migrataur/adapters/sql"
 	_ "github.com/lib/pq"
 )
 
 func main() {
-	db, err := sql.Open("postgres", "postgres://pqgotest:pqgotest@localhost/pqgotest")
+	db, err := sql.Open("postgres", "postgres://pqgotest:pqgotest@localhost/pqgotest?sslmode=disable")
 
 	if err != nil {
 		panic(err)
@@ -23,7 +23,7 @@ func main() {
 
 	defer db.Close()
 
-	mig := migrataur.New(m_sql.NewAdapter(db), &migrataur.Options{})
+	mig := migrataur.New(adapter.WithDBAndOptions(db, adapter.DefaultTableName, "${i}"), &migrataur.Options{})
 
 	cmd, args := os.Args[1], os.Args[2:]
 
@@ -35,6 +35,12 @@ func main() {
 			fmt.Println(v)
 		}
 	case "migrate":
-		mig.MigrateToLatest()
+		if len(args) == 0 {
+			mig.MigrateToLatest()
+		} else {
+			mig.Migrate(args[0])
+		}
+	case "rollback":
+		mig.Rollback(args[0])
 	}
 }

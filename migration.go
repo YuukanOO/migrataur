@@ -34,9 +34,9 @@ func (m ByName) Len() int           { return len(m) }
 func (m ByName) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
 func (m ByName) Less(i, j int) bool { return m[i].name < m[j].name }
 
-// NewAdapterMigration instantiates a new migration. It should be used exclusively
-// by adapters
-func NewAdapterMigration(name string, appliedAt time.Time) *Migration {
+// NewMigration instantiates a new migration. It should be used exclusively
+// by adapters.
+func NewMigration(name string, appliedAt time.Time) *Migration {
 	return &Migration{
 		name:      name,
 		appliedAt: &appliedAt,
@@ -57,12 +57,12 @@ func (m *Migration) hasBeenAppliedAt(time time.Time) {
 	m.appliedAt = &time
 }
 
-// HasBeenApplied check if the migration has already been applied in the database
+// HasBeenApplied checks if the migration has already been applied in the database
 func (m *Migration) HasBeenApplied() bool {
 	return m.appliedAt != nil
 }
 
-// MarshalText serialize this migration
+// MarshalText serializes this migration
 func (m *Migration) MarshalText() (text []byte, err error) {
 	content := fmt.Sprintf(`-- migration %s
 %s
@@ -78,7 +78,7 @@ func (m *Migration) MarshalText() (text []byte, err error) {
 	return []byte(content), nil
 }
 
-// UnmarshalText deserialize a migration
+// UnmarshalText deserializes a migration
 func (m *Migration) UnmarshalText(text []byte) error {
 	lines := strings.Split(string(text), "\n")
 

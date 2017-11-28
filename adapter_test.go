@@ -19,7 +19,7 @@ func (a *mockAdapter) CreateMigrationsTableIfNotExists() error {
 }
 
 func (a *mockAdapter) AddMigration(name string, at time.Time) error {
-	a.appliedMigrations = append(a.appliedMigrations, NewAdapterMigration(name, at))
+	a.appliedMigrations = append(a.appliedMigrations, NewMigration(name, at))
 
 	return nil
 }

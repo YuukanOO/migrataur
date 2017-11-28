@@ -33,6 +33,16 @@ func TestGetRangeStr(t *testing.T) {
 	if end != "migration07" {
 		t.Error("End should be equals to migration07")
 	}
+
+	start, end = getMigrationRange("migration07..migration01")
+
+	if start != "migration01" {
+		t.Error("Start should be equals to migration01")
+	}
+
+	if end != "migration07" {
+		t.Error("End should be equals to migration07")
+	}
 }
 
 func TestMigrataur(t *testing.T) {

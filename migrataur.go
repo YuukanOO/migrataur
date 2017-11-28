@@ -18,10 +18,17 @@ type Migrataur struct {
 
 // New instantiates a new Migrataur instance for the given options
 func New(adapter Adapter, opts *Options) *Migrataur {
-	return &Migrataur{
+	instance := &Migrataur{
 		adapter: adapter,
 		options: extendOptionsAndSanitize(opts),
 	}
+
+	// Creates needed migrations table if needed
+	if err := instance.adapter.CreateMigrationsTableIfNotExists(); err != nil {
+		instance.options.Logger.Panic(err)
+	}
+
+	return instance
 }
 
 func (m *Migrataur) getMigrationFullpath(name string) string {
@@ -55,6 +62,8 @@ func (m *Migrataur) NewMigration(name string) *Migration {
 	if err != nil {
 		m.options.Logger.Panic(err)
 	}
+
+	m.options.Logger.Printf("%s created", migration.name)
 
 	return migration
 }
@@ -137,6 +146,8 @@ func getMigrationRange(rangeStr string) (start, end string) {
 		return splitted[0], ""
 	}
 
+	sort.Strings(splitted)
+
 	return splitted[0], splitted[1]
 }
 
@@ -170,17 +181,70 @@ func (m *Migrataur) Migrate(rangeOrName string) {
 	}
 }
 
+// Rollback inverts migration
+func (m *Migrataur) Rollback(rangeOrName string) {
+	start, end := getMigrationRange(rangeOrName)
+
+	// If there's no range, invert the start and end
+	if end == "" && start != "" {
+		start, end = end, start
+	}
+
+	endApplied := false
+	migrations := m.GetAll()
+
+	sort.Sort(sort.Reverse(ByName(migrations)))
+
+	for _, migration := range migrations {
+		if !endApplied {
+			if strings.Contains(migration.name, end) {
+				m.rollbackMigration(migration)
+
+				endApplied = true
+
+				if start == "" || start == end {
+					break
+				}
+			}
+		} else {
+			m.rollbackMigration(migration)
+
+			if strings.Contains(migration.name, start) {
+				break
+			}
+		}
+	}
+}
+
+// TODO: We should merge apply and rollback into one function
+// and write tests for Rollback
 func (m *Migrataur) applyMigration(migration *Migration) {
 	if migration.HasBeenApplied() {
 		return
 	}
 
 	if err := m.adapter.Exec(migration.upStr); err != nil {
-		m.options.Logger.Panicf("✗\t%s", err)
+		m.options.Logger.Panicf("✗\t%s: %s", migration.name, err)
 	}
 
 	if err := m.adapter.AddMigration(migration.name, time.Now()); err != nil {
-		m.options.Logger.Panicf("✗\t%s", err)
+		m.options.Logger.Panicf("✗\t%s: %s", migration.name, err)
+	}
+
+	m.options.Logger.Printf("✓\t%s", migration.name)
+}
+
+func (m *Migrataur) rollbackMigration(migration *Migration) {
+	if !migration.HasBeenApplied() {
+		return
+	}
+
+	if err := m.adapter.Exec(migration.downStr); err != nil {
+		m.options.Logger.Panicf("✗\t%s: %s", migration.name, err)
+	}
+
+	if err := m.adapter.RemoveMigration(migration.name); err != nil {
+		m.options.Logger.Panicf("✗\t%s: %s", migration.name, err)
 	}
 
 	m.options.Logger.Printf("✓\t%s", migration.name)
