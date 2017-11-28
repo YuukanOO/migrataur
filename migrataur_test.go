@@ -45,9 +45,7 @@ func TestMigrataur(t *testing.T) {
 		t.Error(err)
 	}
 
-	inst := New(newMockAdapter(), &Options{
-		Extension: ".sql",
-	})
+	inst := New(newMockAdapter(), &Options{})
 
 	migration := inst.NewMigration("migration01")
 
@@ -81,8 +79,12 @@ func TestMigrataur(t *testing.T) {
 	migrations = inst.GetAll()
 
 	for _, m := range migrations {
-		if m.name != "migration01" && !m.HasBeenApplied() {
-			t.Error("Migrations should be applied")
+		if strings.Contains(m.name, "migration01") {
+			if m.HasBeenApplied() {
+				t.Error("First migration should not have been applied")
+			}
+		} else if !m.HasBeenApplied() {
+			t.Errorf("Migration should be applied %s", m.name)
 		}
 	}
 
@@ -92,7 +94,26 @@ func TestMigrataur(t *testing.T) {
 
 	for _, m := range migrations {
 		if !m.HasBeenApplied() {
-			t.Error("Migrations should be applied")
+			t.Error("All migrations should have been applied")
+		}
+	}
+
+	// Reset all migrations
+	inst.adapter = newMockAdapter()
+	migrations = inst.GetAll()
+
+	for _, m := range migrations {
+		if m.HasBeenApplied() {
+			t.Error("All migrations should be pending")
+		}
+	}
+
+	inst.MigrateToLatest()
+	migrations = inst.GetAll()
+
+	for _, m := range migrations {
+		if !m.HasBeenApplied() {
+			t.Error("All migrations should have been applied")
 		}
 	}
 }

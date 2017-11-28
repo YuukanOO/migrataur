@@ -38,7 +38,7 @@ func (m *Migrataur) NewMigration(name string) *Migration {
 	file, err := os.Create(fullPath)
 
 	if err != nil {
-		panic(err)
+		m.options.Logger.Panic(err)
 	}
 
 	defer file.Close()
@@ -46,13 +46,13 @@ func (m *Migrataur) NewMigration(name string) *Migration {
 	data, err := migration.MarshalText()
 
 	if err != nil {
-		panic(err)
+		m.options.Logger.Panic(err)
 	}
 
 	_, err = file.Write(data)
 
 	if err != nil {
-		panic(err)
+		m.options.Logger.Panic(err)
 	}
 
 	return migration
@@ -63,7 +63,7 @@ func (m *Migrataur) getAllFromFilesystem() []*Migration {
 	files, err := ioutil.ReadDir(m.options.Directory)
 
 	if err != nil {
-		panic(err)
+		m.options.Logger.Panic(err)
 	}
 
 	for _, f := range files {
@@ -76,11 +76,11 @@ func (m *Migrataur) getAllFromFilesystem() []*Migration {
 		data, err := ioutil.ReadFile(filepath.Join(m.options.Directory, f.Name()))
 
 		if err != nil {
-			panic(err)
+			m.options.Logger.Panic(err)
 		}
 
 		if err = existingMigration.UnmarshalText(data); err != nil {
-			panic(err)
+			m.options.Logger.Panic(err)
 		}
 
 		migrations = append(migrations, existingMigration)
@@ -96,7 +96,7 @@ func (m *Migrataur) GetAll() []*Migration {
 	adapterMigrations, err := m.adapter.GetAll()
 
 	if err != nil {
-		panic(err)
+		m.options.Logger.Panic(err)
 	}
 
 	// Constructs the migrations map to easily update them with adapter ones
@@ -138,16 +138,26 @@ func getMigrationRange(rangeStr string) (start, end string) {
 func (m *Migrataur) Migrate(rangeOrName string) {
 	start, end := getMigrationRange(rangeOrName)
 
+	startApplied := false
+
 	for _, migration := range m.GetAll() {
-		if strings.Contains(migration.name, start) {
-			m.applyMigration(migration)
-		} else {
-			if end != "" && start != end {
+		if !startApplied {
+			if strings.Contains(migration.name, start) {
 				m.applyMigration(migration)
 
-				if strings.Contains(migration.name, end) {
+				startApplied = true
+
+				// Break early if no end migration has been set or if the end is the same
+				if end == "" || start == end {
 					break
 				}
+			}
+		} else {
+			m.applyMigration(migration)
+
+			// If we reach the end, break
+			if strings.Contains(migration.name, end) {
+				break
 			}
 		}
 	}
@@ -159,12 +169,14 @@ func (m *Migrataur) applyMigration(migration *Migration) {
 	}
 
 	if err := m.adapter.Exec(migration.upStr); err != nil {
-		panic(err)
+		m.options.Logger.Panic(err)
 	}
 
 	if err := m.adapter.AddMigration(migration.name, time.Now()); err != nil {
-		panic(err)
+		m.options.Logger.Panic(err)
 	}
+
+	m.options.Logger.Printf("%s applied", migration.name)
 }
 
 // MigrateToLatest migrates the database to the latest version
