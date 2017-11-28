@@ -48,18 +48,31 @@ func TestMigrationCanBeSerializedToText(t *testing.T) {
 
 	if content != expectedSerializedContent {
 		t.Errorf(`Content should be equals to
-%s`, expectedSerializedContent)
+%s, was %s`, expectedSerializedContent, content)
 	}
 }
 
 func TestMigrationCanBeDeserializedFromText(t *testing.T) {
 	migration := Migration{
-		name: migrationName,
+		name:    migrationName,
+		upStr:   upFixture,
+		downStr: downFixture,
 	}
 
 	data, _ := migration.MarshalText()
 
+	migration.upStr = ""
+	migration.downStr = ""
+
 	if err := migration.UnmarshalText(data); err != nil {
 		t.Error(err)
+	}
+
+	if migration.upStr != upFixture {
+		t.Errorf("Up migration should be equal to %s, was %s", upFixture, migration.upStr)
+	}
+
+	if migration.downStr != downFixture {
+		t.Errorf("Down migration should be equal to %s, was %s", downFixture, migration.downStr)
 	}
 }
