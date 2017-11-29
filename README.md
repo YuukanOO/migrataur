@@ -6,10 +6,14 @@
 
 Instead of providing a CLI, it exposes a simple API that you can use in your own application, have a look at the [example](examples/example.go).
 
+## API
+
+The API is really simple.
+
 ## Adapters
 
-// TODO
+Adapters are what makes **migrataur** database agnostic. It's a simple interface to implement.
 
 ## Contributing
 
-Contribution are much appreciated!
+Contribution are much appreciated! Feel free to fork this project, pull requests are welcome.

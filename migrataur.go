@@ -45,6 +45,10 @@ func (m *Migrataur) Init() *Migration {
 		m.options.Logger.Panic(err)
 	}
 
+	initialMigration.Name = filepath.Base(fullPath)
+
+	m.options.Logger.Printf("Migrataur initialized with %s", initialMigration.Name)
+
 	return initialMigration
 }
 
