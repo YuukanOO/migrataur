@@ -2,6 +2,7 @@ package migrataur
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 )
@@ -13,18 +14,28 @@ const (
 	downEnd   = "-- -migrataur down"
 )
 
-// Migration represents a database migration :)
-type Migration struct {
-	name      string
-	upStr     string
-	downStr   string
-	appliedAt *time.Time
+// MarshalOptions holds configuration for the migration marshaling & unmarshaling
+type MarshalOptions struct {
+	UpStart   string
+	UpEnd     string
+	DownStart string
+	DownEnd   string
 }
 
-func newMigration(name string) *Migration {
-	return &Migration{
-		name: name,
-	}
+// DefaultMarshalOptions holds default marshal options for the migration
+var DefaultMarshalOptions = MarshalOptions{
+	UpStart:   "-- +migrataur up",
+	UpEnd:     "-- -migrataur up",
+	DownStart: "-- +migrataur down",
+	DownEnd:   "-- -migrataur down",
+}
+
+// Migration represents a database migration :)
+type Migration struct {
+	Name      string
+	Up        string
+	Down      string
+	AppliedAt *time.Time
 }
 
 // ByName sort an array of migrations by their name, use it with sort.Sort and the like
@@ -32,34 +43,25 @@ type ByName []*Migration
 
 func (m ByName) Len() int           { return len(m) }
 func (m ByName) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
-func (m ByName) Less(i, j int) bool { return m[i].name < m[j].name }
-
-// NewMigration instantiates a new migration. It should be used exclusively
-// by adapters.
-func NewMigration(name string, appliedAt time.Time) *Migration {
-	return &Migration{
-		name:      name,
-		appliedAt: &appliedAt,
-	}
-}
+func (m ByName) Less(i, j int) bool { return m[i].Name < m[j].Name }
 
 func (m *Migration) String() string {
 	ticked := " "
 
-	if m.appliedAt != nil {
+	if m.AppliedAt != nil {
 		ticked = "✓"
 	}
 
-	return fmt.Sprintf("[%s]\t%s", ticked, m.name)
+	return fmt.Sprintf("[%s]\t%s", ticked, m.Name)
 }
 
 func (m *Migration) hasBeenAppliedAt(time time.Time) {
-	m.appliedAt = &time
+	m.AppliedAt = &time
 }
 
 // HasBeenApplied checks if the migration has already been applied in the database
 func (m *Migration) HasBeenApplied() bool {
-	return m.appliedAt != nil
+	return m.AppliedAt != nil
 }
 
 // MarshalText serializes this migration
@@ -73,7 +75,7 @@ func (m *Migration) MarshalText() (text []byte, err error) {
 %s
 %s
 %s
-`, m.name, upStart, m.upStr, upEnd, downStart, m.downStr, downEnd)
+`, m.Name, upStart, m.Up, upEnd, downStart, m.Down, downEnd)
 
 	return []byte(content), nil
 }
@@ -89,13 +91,34 @@ func (m *Migration) UnmarshalText(text []byte) error {
 		case upStart:
 			upFrom = i
 		case upEnd:
-			m.upStr = strings.Join(lines[upFrom+1:i], "\n")
+			m.Up = strings.Join(lines[upFrom+1:i], "\n")
 		case downStart:
 			downFrom = i
 		case downEnd:
-			m.downStr = strings.Join(lines[downFrom+1:i], "\n")
+			m.Down = strings.Join(lines[downFrom+1:i], "\n")
 		}
 	}
 
 	return nil
+}
+
+// WriteTo writes this migration to the filesystem
+func (m *Migration) WriteTo(path string, options MarshalOptions) error {
+	file, err := os.Create(path)
+
+	if err != nil {
+		return err
+	}
+
+	defer file.Close()
+
+	data, err := m.MarshalText()
+
+	if err != nil {
+		return err
+	}
+
+	_, err = file.Write(data)
+
+	return err
 }

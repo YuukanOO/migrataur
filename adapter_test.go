@@ -14,19 +14,22 @@ func newMockAdapter() *mockAdapter {
 	return &mockAdapter{}
 }
 
-func (a *mockAdapter) CreateMigrationsTableIfNotExists() error {
-	return nil
+func (a *mockAdapter) GetInitialMigration() *Migration {
+	return &Migration{Name: "initMigrataur"}
 }
 
 func (a *mockAdapter) AddMigration(name string, at time.Time) error {
-	a.appliedMigrations = append(a.appliedMigrations, NewMigration(name, at))
+	a.appliedMigrations = append(a.appliedMigrations, &Migration{
+		Name:      name,
+		AppliedAt: &at,
+	})
 
 	return nil
 }
 
 func (a *mockAdapter) RemoveMigration(name string) error {
 	for i, m := range a.appliedMigrations {
-		if m.name == name {
+		if m.Name == name {
 			a.appliedMigrations = append(a.appliedMigrations[:i], a.appliedMigrations[i+1:]...)
 			break
 		}

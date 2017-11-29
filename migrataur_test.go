@@ -63,7 +63,7 @@ func TestMigrataur(t *testing.T) {
 		t.Error("Migration should be set")
 	}
 
-	if !strings.HasSuffix(migration.name, "migration01.sql") {
+	if !strings.HasSuffix(migration.Name, "migration01.sql") {
 		t.Error("New migration should have name and extension")
 	}
 
@@ -89,12 +89,12 @@ func TestMigrataur(t *testing.T) {
 	migrations = inst.GetAll()
 
 	for _, m := range migrations {
-		if strings.Contains(m.name, "migration01") {
+		if strings.Contains(m.Name, "migration01") {
 			if m.HasBeenApplied() {
 				t.Error("First migration should not have been applied")
 			}
 		} else if !m.HasBeenApplied() {
-			t.Errorf("Migration should be applied %s", m.name)
+			t.Errorf("Migration should be applied %s", m.Name)
 		}
 	}
 
@@ -130,10 +130,10 @@ func TestMigrataur(t *testing.T) {
 
 func TestMigrationsSorting(t *testing.T) {
 	migrations := []*Migration{
-		newMigration("migration03"),
-		newMigration("migration04"),
-		newMigration("migration02"),
-		newMigration("migration01"),
+		&Migration{Name: "migration03"},
+		&Migration{Name: "migration04"},
+		&Migration{Name: "migration02"},
+		&Migration{Name: "migration01"},
 	}
 
 	expected := []string{
@@ -146,8 +146,8 @@ func TestMigrationsSorting(t *testing.T) {
 	sortMigrations(migrations)
 
 	for i := 0; i < len(expected); i++ {
-		if migrations[i].name != expected[i] {
-			t.Errorf("Expecting %s, got %s when sorted", expected[i], migrations[i].name)
+		if migrations[i].Name != expected[i] {
+			t.Errorf("Expecting %s, got %s when sorted", expected[i], migrations[i].Name)
 		}
 	}
 }

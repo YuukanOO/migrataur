@@ -1,3 +1,5 @@
+// Package sql implements a generic adapter for SQL databases. It uses only
+// the database/sql standard package.
 package sql
 
 import (
@@ -11,6 +13,9 @@ import (
 )
 
 const (
+	// DefaultInitialMigrationName represents the name for the initial migration
+	// used to create the migrations table
+	DefaultInitialMigrationName = "initMigrataur"
 	// DefaultTableName represents the name of the migrations table
 	DefaultTableName = "__migrations"
 	// DefaultPlaceholder holds the default value for the sql placeholder
@@ -51,15 +56,17 @@ func (a *Adapter) getPlaceholder(idx int) string {
 	return strings.Replace(a.placeholder, "{i}", strconv.Itoa(idx), -1)
 }
 
-func (a *Adapter) CreateMigrationsTableIfNotExists() error {
-	a.db.Exec(fmt.Sprintf(`
+func (a *Adapter) GetInitialMigration() *migrataur.Migration {
+	return &migrataur.Migration{
+		Name: DefaultInitialMigrationName,
+		Up: fmt.Sprintf(`
 create table %s(
 	name varchar(250) primary key,
 	applied_at timestamp not null
 );
-`, a.tableName))
-
-	return nil
+`, a.tableName),
+		Down: fmt.Sprintf("drop table %s;", a.tableName),
+	}
 }
 
 func (a *Adapter) AddMigration(completeName string, at time.Time) error {
@@ -90,17 +97,15 @@ func (a *Adapter) GetAll() ([]*migrataur.Migration, error) {
 	migrations := []*migrataur.Migration{}
 
 	defer rows.Close()
-	for rows.Next() {
-		var (
-			name      string
-			appliedAt time.Time
-		)
 
-		if err = rows.Scan(&name, &appliedAt); err != nil {
+	for rows.Next() {
+		var migration = &migrataur.Migration{}
+
+		if err = rows.Scan(&migration.Name, &migration.AppliedAt); err != nil {
 			panic(err)
 		}
 
-		migrations = append(migrations, migrataur.NewMigration(name, appliedAt))
+		migrations = append(migrations, migration)
 	}
 
 	return migrations, nil

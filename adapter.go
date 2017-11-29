@@ -6,7 +6,7 @@ import (
 
 // Adapter is the interface needed to access the underlying database
 type Adapter interface {
-	CreateMigrationsTableIfNotExists() error
+	GetInitialMigration() *Migration
 	AddMigration(completeName string, at time.Time) error
 	RemoveMigration(completeName string) error
 	Exec(command string) error

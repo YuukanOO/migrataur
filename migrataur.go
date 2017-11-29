@@ -3,7 +3,6 @@ package migrataur
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -18,17 +17,10 @@ type Migrataur struct {
 
 // New instantiates a new Migrataur instance for the given options
 func New(adapter Adapter, opts *Options) *Migrataur {
-	instance := &Migrataur{
+	return &Migrataur{
 		adapter: adapter,
 		options: extendOptionsAndSanitize(opts),
 	}
-
-	// Creates needed migrations table if needed
-	if err := instance.adapter.CreateMigrationsTableIfNotExists(); err != nil {
-		instance.options.Logger.Panic(err)
-	}
-
-	return instance
 }
 
 func (m *Migrataur) getMigrationFullpath(name string) string {
@@ -36,34 +28,32 @@ func (m *Migrataur) getMigrationFullpath(name string) string {
 		fmt.Sprintf("%s_%s%s", m.options.SequenceGenerator(), name, m.options.Extension))
 }
 
+// Init writes the initial migration provided by the adapter to create the needed
+// migrations table, you should call it at the start of your project.
+func (m *Migrataur) Init() *Migration {
+
+	initialMigration := m.adapter.GetInitialMigration()
+	fullPath := m.getMigrationFullpath(initialMigration.Name)
+
+	if err := initialMigration.WriteTo(fullPath, *m.options.MarshalOptions); err != nil {
+		m.options.Logger.Panic(err)
+	}
+
+	return initialMigration
+}
+
 // NewMigration creates a new migration in the configured folder and returns the instance of the migration
 // attached to the newly created file
 func (m *Migrataur) NewMigration(name string) *Migration {
 
 	fullPath := m.getMigrationFullpath(name)
-	migration := newMigration(filepath.Base(fullPath))
+	migration := &Migration{Name: filepath.Base(fullPath)}
 
-	file, err := os.Create(fullPath)
-
-	if err != nil {
+	if err := migration.WriteTo(fullPath, *m.options.MarshalOptions); err != nil {
 		m.options.Logger.Panic(err)
 	}
 
-	defer file.Close()
-
-	data, err := migration.MarshalText()
-
-	if err != nil {
-		m.options.Logger.Panic(err)
-	}
-
-	_, err = file.Write(data)
-
-	if err != nil {
-		m.options.Logger.Panic(err)
-	}
-
-	m.options.Logger.Printf("%s created", migration.name)
+	m.options.Logger.Printf("%s created", migration.Name)
 
 	return migration
 }
@@ -81,7 +71,7 @@ func (m *Migrataur) getAllFromFilesystem() []*Migration {
 			continue
 		}
 
-		existingMigration := newMigration(f.Name())
+		existingMigration := &Migration{Name: f.Name()}
 
 		data, err := ioutil.ReadFile(filepath.Join(m.options.Directory, f.Name()))
 
@@ -117,17 +107,17 @@ func (m *Migrataur) GetAll() []*Migration {
 	migrationsMap := map[string]*Migration{}
 
 	for _, m := range fileSystemMigrations {
-		migrationsMap[m.name] = m
+		migrationsMap[m.Name] = m
 	}
 
 	for _, mig := range adapterMigrations {
-		fsMigration, ok := migrationsMap[mig.name]
+		fsMigration, ok := migrationsMap[mig.Name]
 
 		if !ok {
-			m.options.Logger.Panicf("The migration %s was not found in the migrations directory!", mig.name)
+			m.options.Logger.Panicf("The migration %s was not found in the migrations directory!", mig.Name)
 		}
 
-		fsMigration.hasBeenAppliedAt(*mig.appliedAt)
+		fsMigration.hasBeenAppliedAt(*mig.AppliedAt)
 	}
 
 	sortMigrations(fileSystemMigrations)
@@ -160,7 +150,7 @@ func (m *Migrataur) Migrate(rangeOrName string) {
 
 	for _, migration := range m.GetAll() {
 		if !startApplied {
-			if strings.Contains(migration.name, start) {
+			if strings.Contains(migration.Name, start) {
 				m.applyMigration(migration)
 
 				startApplied = true
@@ -174,7 +164,7 @@ func (m *Migrataur) Migrate(rangeOrName string) {
 			m.applyMigration(migration)
 
 			// If we reach the end, break
-			if strings.Contains(migration.name, end) {
+			if strings.Contains(migration.Name, end) {
 				break
 			}
 		}
@@ -197,7 +187,7 @@ func (m *Migrataur) Rollback(rangeOrName string) {
 
 	for _, migration := range migrations {
 		if !endApplied {
-			if strings.Contains(migration.name, end) {
+			if strings.Contains(migration.Name, end) {
 				m.rollbackMigration(migration)
 
 				endApplied = true
@@ -209,7 +199,7 @@ func (m *Migrataur) Rollback(rangeOrName string) {
 		} else {
 			m.rollbackMigration(migration)
 
-			if strings.Contains(migration.name, start) {
+			if strings.Contains(migration.Name, start) {
 				break
 			}
 		}
@@ -223,15 +213,15 @@ func (m *Migrataur) applyMigration(migration *Migration) {
 		return
 	}
 
-	if err := m.adapter.Exec(migration.upStr); err != nil {
-		m.options.Logger.Panicf("✗\t%s: %s", migration.name, err)
+	if err := m.adapter.Exec(migration.Up); err != nil {
+		m.options.Logger.Panicf("✗\t%s: %s", migration.Name, err)
 	}
 
-	if err := m.adapter.AddMigration(migration.name, time.Now()); err != nil {
-		m.options.Logger.Panicf("✗\t%s: %s", migration.name, err)
+	if err := m.adapter.AddMigration(migration.Name, time.Now()); err != nil {
+		m.options.Logger.Panicf("✗\t%s: %s", migration.Name, err)
 	}
 
-	m.options.Logger.Printf("✓\t%s", migration.name)
+	m.options.Logger.Printf("✓\t%s", migration.Name)
 }
 
 func (m *Migrataur) rollbackMigration(migration *Migration) {
@@ -239,20 +229,31 @@ func (m *Migrataur) rollbackMigration(migration *Migration) {
 		return
 	}
 
-	if err := m.adapter.Exec(migration.downStr); err != nil {
-		m.options.Logger.Panicf("✗\t%s: %s", migration.name, err)
+	if err := m.adapter.Exec(migration.Down); err != nil {
+		m.options.Logger.Panicf("✗\t%s: %s", migration.Name, err)
 	}
 
-	if err := m.adapter.RemoveMigration(migration.name); err != nil {
-		m.options.Logger.Panicf("✗\t%s: %s", migration.name, err)
+	if err := m.adapter.RemoveMigration(migration.Name); err != nil {
+		m.options.Logger.Panicf("✗\t%s: %s", migration.Name, err)
 	}
 
-	m.options.Logger.Printf("✓\t%s", migration.name)
+	m.options.Logger.Printf("✓\t%s", migration.Name)
 }
 
 // MigrateToLatest migrates the database to the latest version
 func (m *Migrataur) MigrateToLatest() {
 	for _, migration := range m.GetAll() {
 		m.applyMigration(migration)
+	}
+}
+
+// Reset resets the database to its initial state
+func (m *Migrataur) Reset() {
+	migrations := m.GetAll()
+
+	sort.Sort(sort.Reverse(ByName(migrations)))
+
+	for _, migration := range m.GetAll() {
+		m.rollbackMigration(migration)
 	}
 }

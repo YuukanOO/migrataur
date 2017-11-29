@@ -28,6 +28,8 @@ func main() {
 	cmd, args := os.Args[1], os.Args[2:]
 
 	switch cmd {
+	case "init":
+		mig.Init()
 	case "new":
 		mig.NewMigration(args[0])
 	case "list":

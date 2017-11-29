@@ -31,11 +31,16 @@ type Options struct {
 	Directory         string
 	Extension         string
 	SequenceGenerator func() string
+	MarshalOptions    *MarshalOptions
 }
 
 func extendOptionsAndSanitize(opts *Options) *Options {
 
-	dir, extension, generator, logger := opts.Directory, opts.Extension, opts.SequenceGenerator, opts.Logger
+	dir, extension, generator, logger, marshalOpts :=
+		opts.Directory,
+		opts.Extension,
+		opts.SequenceGenerator,
+		opts.Logger, opts.MarshalOptions
 
 	if logger == nil {
 		logger = log.New(os.Stdout, "", log.LstdFlags)
@@ -67,10 +72,15 @@ func extendOptionsAndSanitize(opts *Options) *Options {
 		generator = func() string { return strconv.FormatInt(time.Now().Unix(), 10) }
 	}
 
+	if marshalOpts == nil {
+		marshalOpts = &DefaultMarshalOptions
+	}
+
 	return &Options{
 		Logger:            logger,
 		Directory:         absPath,
 		Extension:         extension,
 		SequenceGenerator: generator,
+		MarshalOptions:    marshalOpts,
 	}
 }
