@@ -7,128 +7,222 @@ import (
 	"testing"
 )
 
-func assertEquals(t *testing.T, expected, actual interface{}) {
+// Utility funcs used for testing
+
+func shouldHaveBeenEquals(t *testing.T, expected, actual interface{}) {
 	t.Errorf("Expected: %s, Got: %s", expected, actual)
 }
 
-func TestGetRangeStr(t *testing.T) {
-	start, end := getMigrationRange("")
+func cleanUpMigrationsDir() {
+	fullpath, _ := filepath.Abs(DefaultOptions.Directory)
 
-	if start != "" || end != "" {
-		t.Error("Start and end should be empty")
-	}
-
-	start, end = getMigrationRange("migration01")
-
-	if start != "migration01" {
-		t.Error("Start should be equals to migration01")
-	}
-
-	if end != "" {
-		t.Error("End should be empty")
-	}
-
-	start, end = getMigrationRange("migration02..migration07")
-
-	if start != "migration02" {
-		t.Error("Start should be equals to migration02")
-	}
-
-	if end != "migration07" {
-		t.Error("End should be equals to migration07")
-	}
-
-	start, end = getMigrationRange("migration07..migration01")
-
-	if start != "migration01" {
-		t.Error("Start should be equals to migration01")
-	}
-
-	if end != "migration07" {
-		t.Error("End should be equals to migration07")
+	if err := os.RemoveAll(fullpath); err != nil {
+		panic(err)
 	}
 }
 
-func TestMigrataur(t *testing.T) {
-	// Ok that's a big ugly test and it writes files to disk, I should try to
-	// refactor it someday
+func TestGetRangeStr(t *testing.T) {
+	first, last := getMigrationRange("")
 
-	fullpath, _ := filepath.Abs("./migrations")
-
-	if err := os.RemoveAll(fullpath); err != nil {
-		t.Error(err)
+	if first != "" || last != "" {
+		t.Error("Start and end should be empty")
 	}
 
-	inst := New(newMockAdapter(), Options{})
+	first, last = getMigrationRange("migration01")
 
-	migration := inst.NewMigration("migration01")
+	if first != "migration01" {
+		shouldHaveBeenEquals(t, "migration01", first)
+	}
+
+	if last != "" {
+		shouldHaveBeenEquals(t, "", last)
+	}
+
+	first, last = getMigrationRange("migration02..migration07")
+
+	if first != "migration02" {
+		shouldHaveBeenEquals(t, "migration02", first)
+	}
+
+	if last != "migration07" {
+		shouldHaveBeenEquals(t, "migration07", last)
+	}
+}
+
+func TestMigrataurInit(t *testing.T) {
+	cleanUpMigrationsDir()
+
+	instance := New(&mockAdapter{}, DefaultOptions)
+
+	migration := instance.Init()
 
 	if migration == nil {
-		t.Error("Migration should be set")
+		t.Error("Initial migration should not be nil")
 	}
+
+	if !strings.HasSuffix(migration.Name, "initMigrataur.sql") {
+		shouldHaveBeenEquals(t, "initMigrataur.sql", migration.Name)
+	}
+
+	if migration.HasBeenApplied() {
+		shouldHaveBeenEquals(t, false, migration.HasBeenApplied())
+	}
+}
+
+func TestMigrataurNew(t *testing.T) {
+	cleanUpMigrationsDir()
+
+	instance := New(&mockAdapter{}, DefaultOptions)
+
+	migration := instance.NewMigration("migration01")
 
 	if !strings.HasSuffix(migration.Name, "migration01.sql") {
-		t.Error("New migration should have name and extension")
+		t.Error("Migration name should contains migration01.sql")
+	}
+}
+
+func TestMigrataurMigrateToLatest(t *testing.T) {
+	cleanUpMigrationsDir()
+
+	adapter := &mockAdapter{}
+	instance := New(adapter, DefaultOptions)
+
+	instance.NewMigration("migration01")
+	instance.NewMigration("migration02")
+	instance.NewMigration("migration03")
+	instance.NewMigration("migration04")
+
+	instance.MigrateToLatest()
+
+	if len(adapter.appliedMigrations) != 4 {
+		shouldHaveBeenEquals(t, 4, len(adapter.appliedMigrations))
+	}
+}
+
+func TestMigrataurMigrate(t *testing.T) {
+	cleanUpMigrationsDir()
+
+	adapter := &mockAdapter{}
+	instance := New(adapter, DefaultOptions)
+
+	instance.NewMigration("migration01")
+	instance.NewMigration("migration02")
+	instance.NewMigration("migration03")
+	instance.NewMigration("migration04")
+	instance.NewMigration("migration05")
+	instance.NewMigration("migration06")
+
+	instance.Migrate("migration02..migration04")
+
+	if len(adapter.appliedMigrations) != 3 {
+		shouldHaveBeenEquals(t, 3, len(adapter.appliedMigrations))
 	}
 
-	inst.NewMigration("migration02")
-	inst.NewMigration("migration03")
-	inst.NewMigration("migration04")
-	inst.NewMigration("migration05")
+	instance.Migrate("migration05")
 
-	migrations := inst.GetAll()
+	if len(adapter.appliedMigrations) != 4 {
+		shouldHaveBeenEquals(t, 4, len(adapter.appliedMigrations))
+	}
 
-	if len(migrations) != 5 {
-		t.Error("We should have 5 migrations now")
+	// Migrations count should not have changed
+	instance.Migrate("migration05")
+
+	if len(adapter.appliedMigrations) != 4 {
+		shouldHaveBeenEquals(t, 4, len(adapter.appliedMigrations))
+	}
+}
+
+func TestMigrataurGetAll(t *testing.T) {
+	cleanUpMigrationsDir()
+
+	instance := New(&mockAdapter{}, DefaultOptions)
+
+	instance.NewMigration("migration01")
+	instance.NewMigration("migration02")
+	instance.NewMigration("migration03")
+	instance.NewMigration("migration04")
+
+	instance.Migrate("migration01..migration02")
+	instance.Migrate("migration04")
+
+	migrations := instance.GetAll()
+
+	if len(migrations) != 4 {
+		shouldHaveBeenEquals(t, 4, len(migrations))
 	}
 
 	for _, m := range migrations {
-		if m.HasBeenApplied() {
-			t.Error("All migrations should be pending")
-		}
-	}
-
-	inst.Migrate("migration02..migration05")
-
-	migrations = inst.GetAll()
-
-	for _, m := range migrations {
-		if strings.Contains(m.Name, "migration01") {
+		if strings.Contains(m.Name, "migration03") {
 			if m.HasBeenApplied() {
-				t.Error("First migration should not have been applied")
+				t.Errorf("%s should not have been applied", m.Name)
 			}
 		} else if !m.HasBeenApplied() {
-			t.Errorf("Migration should be applied %s", m.Name)
+			t.Errorf("%s should have been applied", m.Name)
 		}
 	}
+}
 
-	inst.Migrate("migration01")
+func TestMigrataurRollback(t *testing.T) {
+	cleanUpMigrationsDir()
 
-	migrations = inst.GetAll()
+	adapter := &mockAdapter{}
 
-	for _, m := range migrations {
-		if !m.HasBeenApplied() {
-			t.Error("All migrations should have been applied")
-		}
+	instance := New(adapter, DefaultOptions)
+
+	instance.NewMigration("migration01")
+	instance.NewMigration("migration02")
+	instance.NewMigration("migration03")
+	instance.NewMigration("migration04")
+	instance.NewMigration("migration05")
+
+	instance.MigrateToLatest()
+
+	if len(adapter.appliedMigrations) != 5 {
+		shouldHaveBeenEquals(t, 5, len(adapter.appliedMigrations))
 	}
 
-	// Reset all migrations
-	inst.adapter = newMockAdapter()
-	migrations = inst.GetAll()
+	instance.Rollback("migration05..migration03")
 
-	for _, m := range migrations {
-		if m.HasBeenApplied() {
-			t.Error("All migrations should be pending")
-		}
+	if len(adapter.appliedMigrations) != 2 {
+		shouldHaveBeenEquals(t, 2, len(adapter.appliedMigrations))
 	}
 
-	inst.MigrateToLatest()
-	migrations = inst.GetAll()
+	instance.Rollback("migration02")
 
-	for _, m := range migrations {
-		if !m.HasBeenApplied() {
-			t.Error("All migrations should have been applied")
-		}
+	if len(adapter.appliedMigrations) != 1 {
+		shouldHaveBeenEquals(t, 1, len(adapter.appliedMigrations))
+	}
+
+	// Twice should redo the down func
+	instance.Rollback("migration02")
+
+	if len(adapter.appliedMigrations) != 1 {
+		shouldHaveBeenEquals(t, 1, len(adapter.appliedMigrations))
+	}
+}
+
+func TestMigrataurReset(t *testing.T) {
+	cleanUpMigrationsDir()
+
+	adapter := &mockAdapter{}
+
+	instance := New(adapter, DefaultOptions)
+
+	instance.NewMigration("migration01")
+	instance.NewMigration("migration02")
+	instance.NewMigration("migration03")
+	instance.NewMigration("migration04")
+
+	instance.MigrateToLatest()
+
+	if len(adapter.appliedMigrations) != 4 {
+		shouldHaveBeenEquals(t, 4, len(adapter.appliedMigrations))
+	}
+
+	instance.Reset()
+
+	if len(adapter.appliedMigrations) != 0 {
+		shouldHaveBeenEquals(t, 0, len(adapter.appliedMigrations))
 	}
 }
 

@@ -23,7 +23,7 @@ func main() {
 
 	defer db.Close()
 
-	mig := migrataur.New(adapter.WithDBAndOptions(db, adapter.DefaultTableName, "${i}"), &migrataur.Options{})
+	mig := migrataur.New(adapter.WithDBAndOptions(db, adapter.DefaultTableName, "${i}"), migrataur.DefaultOptions)
 
 	cmd, args := os.Args[1], os.Args[2:]
 
@@ -44,5 +44,7 @@ func main() {
 		}
 	case "rollback":
 		mig.Rollback(args[0])
+	case "reset":
+		mig.Reset()
 	}
 }

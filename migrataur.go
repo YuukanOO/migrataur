@@ -10,9 +10,11 @@ import (
 )
 
 // Those ones are used to define migration's directions
+type dir int
+
 const (
-	dirUp   = iota
-	dirDown = iota
+	dirUp   dir = iota
+	dirDown     = iota
 )
 
 // Migrataur represents an instance configurated for a particular use
@@ -39,13 +41,14 @@ func (m *Migrataur) getMigrationFullpath(name string) string {
 func (m *Migrataur) Init() *Migration {
 
 	initialMigration := m.adapter.GetInitialMigration()
+
+	// Updates the name based on the generated path
 	fullPath := m.getMigrationFullpath(initialMigration.Name)
+	initialMigration.Name = filepath.Base(fullPath)
 
 	if err := initialMigration.WriteTo(fullPath, m.options.MarshalOptions); err != nil {
 		m.options.Logger.Panic(err)
 	}
-
-	initialMigration.Name = filepath.Base(fullPath)
 
 	m.options.Logger.Printf("Migrataur initialized with %s", initialMigration.Name)
 
@@ -134,8 +137,7 @@ func (m *Migrataur) GetAll() []*Migration {
 	return fileSystemMigrations
 }
 
-// TODO: forget about sorting
-func getMigrationRange(rangeStr string) (start, end string) {
+func getMigrationRange(rangeStr string) (first, last string) {
 	if rangeStr == "" {
 		return "", ""
 	}
@@ -145,8 +147,6 @@ func getMigrationRange(rangeStr string) (start, end string) {
 	if len(splitted) == 1 {
 		return splitted[0], ""
 	}
-
-	sort.Strings(splitted)
 
 	return splitted[0], splitted[1]
 }
@@ -187,12 +187,7 @@ func (m *Migrataur) Migrate(rangeOrName string) {
 func (m *Migrataur) Rollback(rangeOrName string) {
 	m.options.Logger.Printf("Rollbacking %s", rangeOrName)
 
-	start, end := getMigrationRange(rangeOrName)
-
-	// If there's no range, invert the start and end
-	if end == "" && start != "" {
-		start, end = end, start
-	}
+	end, start := getMigrationRange(rangeOrName)
 
 	endApplied := false
 	migrations := m.GetAll()
@@ -281,7 +276,7 @@ func (m *Migrataur) Reset() {
 
 	sort.Sort(sort.Reverse(ByName(migrations)))
 
-	for _, migration := range m.GetAll() {
+	for _, migration := range migrations {
 		m.rollbackMigration(migration)
 	}
 }

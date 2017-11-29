@@ -24,7 +24,7 @@ func TestExtendEmptyOptions(t *testing.T) {
 	fullpath, _ := filepath.Abs(DefaultOptions.Directory)
 
 	if extended.Directory != fullpath {
-		assertEquals(t, fullpath, extended.Directory)
+		shouldHaveBeenEquals(t, fullpath, extended.Directory)
 	}
 
 	if extended.Logger != DefaultOptions.Logger {
@@ -32,15 +32,15 @@ func TestExtendEmptyOptions(t *testing.T) {
 	}
 
 	if extended.Extension != DefaultOptions.Extension {
-		assertEquals(t, DefaultOptions.Extension, extended.Extension)
+		shouldHaveBeenEquals(t, DefaultOptions.Extension, extended.Extension)
 	}
 
 	if extended.SequenceGenerator() != DefaultOptions.SequenceGenerator() {
-		assertEquals(t, DefaultOptions.SequenceGenerator, extended.SequenceGenerator)
+		shouldHaveBeenEquals(t, DefaultOptions.SequenceGenerator, extended.SequenceGenerator)
 	}
 
 	if extended.MarshalOptions != DefaultOptions.MarshalOptions {
-		assertEquals(t, DefaultOptions.MarshalOptions, extended.MarshalOptions)
+		shouldHaveBeenEquals(t, DefaultOptions.MarshalOptions, extended.MarshalOptions)
 	}
 }
 
@@ -64,14 +64,14 @@ func TestExtendOptions(t *testing.T) {
 	fullpath, _ := filepath.Abs("./MigrationsGoesHere")
 
 	if extended.Directory != fullpath {
-		assertEquals(t, fullpath, extended.Directory)
+		shouldHaveBeenEquals(t, fullpath, extended.Directory)
 	}
 
 	if extended.Extension != ".myext" {
-		assertEquals(t, ".myext", extended.Extension)
+		shouldHaveBeenEquals(t, ".myext", extended.Extension)
 	}
 
 	if extended.MarshalOptions != marshalOpts {
-		assertEquals(t, marshalOpts, extended.MarshalOptions)
+		shouldHaveBeenEquals(t, marshalOpts, extended.MarshalOptions)
 	}
 }

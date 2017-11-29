@@ -5,57 +5,47 @@ import (
 	"testing"
 )
 
-const (
-	migrationName = "TestMigration.sql"
-	upFixture     = `
-create table my_resources (
-	id int primary key,
-	name varchar(50),
-);
-`
-	downFixture = `
-drop table my_resources;
-`
-)
-
-var (
-	expectedSerializedContent = fmt.Sprintf(`-- migration %s
--- +migrataur up
-%s
--- -migrataur up
-
-
--- +migrataur down
-%s
--- -migrataur down
-`, migrationName, upFixture, downFixture)
-)
-
 func TestMigrationMarshaling(t *testing.T) {
 	migration := Migration{
-		Name: migrationName,
-		Up:   upFixture,
-		Down: downFixture,
+		Name: "migration01",
+		Up:   "create table horses (name varchar(50) primary key);",
+		Down: "drop table horses;",
 	}
+	opts := DefaultMarshalOptions
 
-	data, err := migration.Marshal(DefaultMarshalOptions)
+	data, err := migration.Marshal(opts)
 
 	if err != nil {
 		t.Error(err)
 	}
 
 	content := string(data)
+	expected := fmt.Sprintf(`%s %s
+%s
+%s
+%s
 
-	if content != expectedSerializedContent {
-		assertEquals(t, expectedSerializedContent, content)
+
+%s
+%s
+%s
+`, opts.Header, migration.Name,
+		opts.UpStart, migration.Up, opts.UpEnd,
+		opts.DownStart, migration.Down, opts.DownEnd)
+
+	if content != expected {
+		shouldHaveBeenEquals(t, expected, content)
 	}
 }
 
 func TestMigrationUnmarshaling(t *testing.T) {
+	up := "create table horses (name varchar(50) primary key);"
+	down := "drop table horses;"
+
 	migration := Migration{
-		Name: migrationName,
-		Up:   upFixture,
-		Down: downFixture,
+		Name: "migration02",
+		Up:   up,
+		Down: down,
 	}
 
 	data, _ := migration.Marshal(DefaultMarshalOptions)
@@ -67,11 +57,11 @@ func TestMigrationUnmarshaling(t *testing.T) {
 		t.Error(err)
 	}
 
-	if migration.Up != upFixture {
-		assertEquals(t, upFixture, migration.Up)
+	if migration.Up != up {
+		shouldHaveBeenEquals(t, up, migration.Up)
 	}
 
-	if migration.Down != downFixture {
-		assertEquals(t, downFixture, migration.Down)
+	if migration.Down != down {
+		shouldHaveBeenEquals(t, down, migration.Down)
 	}
 }
