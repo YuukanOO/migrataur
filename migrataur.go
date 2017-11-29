@@ -45,7 +45,6 @@ func (m *Migrataur) Init() *Migration {
 // NewMigration creates a new migration in the configured folder and returns the instance of the migration
 // attached to the newly created file
 func (m *Migrataur) NewMigration(name string) *Migration {
-
 	fullPath := m.getMigrationFullpath(name)
 	migration := &Migration{Name: filepath.Base(fullPath)}
 
@@ -125,6 +124,7 @@ func (m *Migrataur) GetAll() []*Migration {
 	return fileSystemMigrations
 }
 
+// TODO: forget about sorting
 func getMigrationRange(rangeStr string) (start, end string) {
 	if rangeStr == "" {
 		return "", ""
@@ -144,6 +144,8 @@ func getMigrationRange(rangeStr string) (start, end string) {
 // Migrate migrates the database.
 // rangeOrName can be the exact migration name or a range such as <migration>..<another migration name>
 func (m *Migrataur) Migrate(rangeOrName string) {
+	m.options.Logger.Printf("Applying %s", rangeOrName)
+
 	start, end := getMigrationRange(rangeOrName)
 
 	startApplied := false
@@ -173,6 +175,8 @@ func (m *Migrataur) Migrate(rangeOrName string) {
 
 // Rollback inverts migration
 func (m *Migrataur) Rollback(rangeOrName string) {
+	m.options.Logger.Printf("Rollbacking %s", rangeOrName)
+
 	start, end := getMigrationRange(rangeOrName)
 
 	// If there's no range, invert the start and end
@@ -242,6 +246,8 @@ func (m *Migrataur) rollbackMigration(migration *Migration) {
 
 // MigrateToLatest migrates the database to the latest version
 func (m *Migrataur) MigrateToLatest() {
+	m.options.Logger.Print("Applying all pending migrations")
+
 	for _, migration := range m.GetAll() {
 		m.applyMigration(migration)
 	}
@@ -249,6 +255,8 @@ func (m *Migrataur) MigrateToLatest() {
 
 // Reset resets the database to its initial state
 func (m *Migrataur) Reset() {
+	m.options.Logger.Print("Resetting database")
+
 	migrations := m.GetAll()
 
 	sort.Sort(sort.Reverse(ByName(migrations)))

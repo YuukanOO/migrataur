@@ -4,7 +4,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -32,6 +31,12 @@ type Options struct {
 	Extension         string
 	SequenceGenerator func() string
 	MarshalOptions    *MarshalOptions
+}
+
+// GetCurrentTimeFormatted retrieves the current time formatted. It's used as
+// the default sequence generator since a linux timestamp goes up to 2038 :)
+func GetCurrentTimeFormatted() string {
+	return time.Now().UTC().Format("20060102150405")
 }
 
 func extendOptionsAndSanitize(opts *Options) *Options {
@@ -69,7 +74,7 @@ func extendOptionsAndSanitize(opts *Options) *Options {
 	}
 
 	if generator == nil {
-		generator = func() string { return strconv.FormatInt(time.Now().Unix(), 10) }
+		generator = GetCurrentTimeFormatted
 	}
 
 	if marshalOpts == nil {
