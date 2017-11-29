@@ -3,32 +3,31 @@ package migrataur
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
 
-const (
-	upStart   = "-- +migrataur up"
-	upEnd     = "-- -migrataur up"
-	downStart = "-- +migrataur down"
-	downEnd   = "-- -migrataur down"
-)
-
 // MarshalOptions holds configuration for the migration marshaling & unmarshaling
 type MarshalOptions struct {
+	Header    string
 	UpStart   string
 	UpEnd     string
 	DownStart string
 	DownEnd   string
 }
 
-// DefaultMarshalOptions holds default marshal options for the migration
-var DefaultMarshalOptions = MarshalOptions{
-	UpStart:   "-- +migrataur up",
-	UpEnd:     "-- -migrataur up",
-	DownStart: "-- +migrataur down",
-	DownEnd:   "-- -migrataur down",
-}
+var (
+	// DefaultMarshalOptions holds default marshal options for the migration
+	DefaultMarshalOptions = MarshalOptions{
+		Header:    "-- migration",
+		UpStart:   "-- +migrataur up",
+		UpEnd:     "-- -migrataur up",
+		DownStart: "-- +migrataur down",
+		DownEnd:   "-- -migrataur down",
+	}
+	emptyMarshalOptions = MarshalOptions{}
+)
 
 // Migration represents a database migration :)
 type Migration struct {
@@ -48,7 +47,7 @@ func (m ByName) Less(i, j int) bool { return m[i].Name < m[j].Name }
 func (m *Migration) String() string {
 	ticked := " "
 
-	if m.AppliedAt != nil {
+	if m.HasBeenApplied() {
 		ticked = "✓"
 	}
 
@@ -59,14 +58,18 @@ func (m *Migration) hasBeenAppliedAt(time time.Time) {
 	m.AppliedAt = &time
 }
 
+func (m *Migration) hasBeenRolledBack() {
+	m.AppliedAt = nil
+}
+
 // HasBeenApplied checks if the migration has already been applied in the database
 func (m *Migration) HasBeenApplied() bool {
 	return m.AppliedAt != nil
 }
 
-// MarshalText serializes this migration
-func (m *Migration) MarshalText() (text []byte, err error) {
-	content := fmt.Sprintf(`-- migration %s
+// Marshal serializes this migration
+func (m *Migration) Marshal(options MarshalOptions) (text []byte, err error) {
+	content := fmt.Sprintf(`%s %s
 %s
 %s
 %s
@@ -75,26 +78,26 @@ func (m *Migration) MarshalText() (text []byte, err error) {
 %s
 %s
 %s
-`, m.Name, upStart, m.Up, upEnd, downStart, m.Down, downEnd)
+`, options.Header, m.Name, options.UpStart, m.Up, options.UpEnd, options.DownStart, m.Down, options.DownEnd)
 
 	return []byte(content), nil
 }
 
-// UnmarshalText deserializes a migration
-func (m *Migration) UnmarshalText(text []byte) error {
+// Unmarshal deserializes a migration
+func (m *Migration) Unmarshal(text []byte, options MarshalOptions) error {
 	lines := strings.Split(string(text), "\n")
 
 	upFrom, downFrom := 0, 0
 
 	for i := 0; i < len(lines); i++ {
 		switch lines[i] {
-		case upStart:
+		case options.UpStart:
 			upFrom = i
-		case upEnd:
+		case options.UpEnd:
 			m.Up = strings.Join(lines[upFrom+1:i], "\n")
-		case downStart:
+		case options.DownStart:
 			downFrom = i
-		case downEnd:
+		case options.DownEnd:
 			m.Down = strings.Join(lines[downFrom+1:i], "\n")
 		}
 	}
@@ -104,6 +107,12 @@ func (m *Migration) UnmarshalText(text []byte) error {
 
 // WriteTo writes this migration to the filesystem
 func (m *Migration) WriteTo(path string, options MarshalOptions) error {
+
+	// Make sure the directory exists
+	if err := os.MkdirAll(filepath.Dir(path), os.ModeDir); err != nil {
+		return err
+	}
+
 	file, err := os.Create(path)
 
 	if err != nil {
@@ -112,7 +121,7 @@ func (m *Migration) WriteTo(path string, options MarshalOptions) error {
 
 	defer file.Close()
 
-	data, err := m.MarshalText()
+	data, err := m.Marshal(options)
 
 	if err != nil {
 		return err

@@ -31,14 +31,14 @@ var (
 `, migrationName, upFixture, downFixture)
 )
 
-func TestMigrationCanBeSerializedToText(t *testing.T) {
+func TestMigrationMarshaling(t *testing.T) {
 	migration := Migration{
 		Name: migrationName,
 		Up:   upFixture,
 		Down: downFixture,
 	}
 
-	data, err := migration.MarshalText()
+	data, err := migration.Marshal(DefaultMarshalOptions)
 
 	if err != nil {
 		t.Error(err)
@@ -47,32 +47,31 @@ func TestMigrationCanBeSerializedToText(t *testing.T) {
 	content := string(data)
 
 	if content != expectedSerializedContent {
-		t.Errorf(`Content should be equals to
-%s, was %s`, expectedSerializedContent, content)
+		assertEquals(t, expectedSerializedContent, content)
 	}
 }
 
-func TestMigrationCanBeDeserializedFromText(t *testing.T) {
+func TestMigrationUnmarshaling(t *testing.T) {
 	migration := Migration{
 		Name: migrationName,
 		Up:   upFixture,
 		Down: downFixture,
 	}
 
-	data, _ := migration.MarshalText()
+	data, _ := migration.Marshal(DefaultMarshalOptions)
 
 	migration.Up = ""
 	migration.Down = ""
 
-	if err := migration.UnmarshalText(data); err != nil {
+	if err := migration.Unmarshal(data, DefaultMarshalOptions); err != nil {
 		t.Error(err)
 	}
 
 	if migration.Up != upFixture {
-		t.Errorf("Up migration should be equal to %s, was %s", upFixture, migration.Up)
+		assertEquals(t, upFixture, migration.Up)
 	}
 
 	if migration.Down != downFixture {
-		t.Errorf("Down migration should be equal to %s, was %s", downFixture, migration.Down)
+		assertEquals(t, downFixture, migration.Down)
 	}
 }

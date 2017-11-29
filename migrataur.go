@@ -9,17 +9,23 @@ import (
 	"time"
 )
 
+// Those ones are used to define migration's directions
+const (
+	dirUp   = iota
+	dirDown = iota
+)
+
 // Migrataur represents an instance configurated for a particular use
 type Migrataur struct {
-	options *Options
+	options Options
 	adapter Adapter
 }
 
 // New instantiates a new Migrataur instance for the given options
-func New(adapter Adapter, opts *Options) *Migrataur {
+func New(adapter Adapter, opts Options) *Migrataur {
 	return &Migrataur{
 		adapter: adapter,
-		options: extendOptionsAndSanitize(opts),
+		options: opts.Extend(DefaultOptions),
 	}
 }
 
@@ -35,7 +41,7 @@ func (m *Migrataur) Init() *Migration {
 	initialMigration := m.adapter.GetInitialMigration()
 	fullPath := m.getMigrationFullpath(initialMigration.Name)
 
-	if err := initialMigration.WriteTo(fullPath, *m.options.MarshalOptions); err != nil {
+	if err := initialMigration.WriteTo(fullPath, m.options.MarshalOptions); err != nil {
 		m.options.Logger.Panic(err)
 	}
 
@@ -48,7 +54,7 @@ func (m *Migrataur) NewMigration(name string) *Migration {
 	fullPath := m.getMigrationFullpath(name)
 	migration := &Migration{Name: filepath.Base(fullPath)}
 
-	if err := migration.WriteTo(fullPath, *m.options.MarshalOptions); err != nil {
+	if err := migration.WriteTo(fullPath, m.options.MarshalOptions); err != nil {
 		m.options.Logger.Panic(err)
 	}
 
@@ -78,7 +84,7 @@ func (m *Migrataur) getAllFromFilesystem() []*Migration {
 			m.options.Logger.Panic(err)
 		}
 
-		if err = existingMigration.UnmarshalText(data); err != nil {
+		if err = existingMigration.Unmarshal(data, m.options.MarshalOptions); err != nil {
 			m.options.Logger.Panic(err)
 		}
 
@@ -212,25 +218,31 @@ func (m *Migrataur) Rollback(rangeOrName string) {
 
 // TODO: We should merge apply and rollback into one function
 // and write tests for Rollback
-func (m *Migrataur) applyMigration(migration *Migration) {
+func (m *Migrataur) applyMigration(migration *Migration) bool {
 	if migration.HasBeenApplied() {
-		return
+		return false
 	}
 
 	if err := m.adapter.Exec(migration.Up); err != nil {
 		m.options.Logger.Panicf("✗\t%s: %s", migration.Name, err)
 	}
 
-	if err := m.adapter.AddMigration(migration.Name, time.Now()); err != nil {
+	now := time.Now().UTC()
+
+	if err := m.adapter.AddMigration(migration.Name, now); err != nil {
 		m.options.Logger.Panicf("✗\t%s: %s", migration.Name, err)
 	}
 
+	migration.hasBeenAppliedAt(now)
+
 	m.options.Logger.Printf("✓\t%s", migration.Name)
+
+	return true
 }
 
-func (m *Migrataur) rollbackMigration(migration *Migration) {
+func (m *Migrataur) rollbackMigration(migration *Migration) bool {
 	if !migration.HasBeenApplied() {
-		return
+		return false
 	}
 
 	if err := m.adapter.Exec(migration.Down); err != nil {
@@ -241,7 +253,11 @@ func (m *Migrataur) rollbackMigration(migration *Migration) {
 		m.options.Logger.Panicf("✗\t%s: %s", migration.Name, err)
 	}
 
+	migration.hasBeenRolledBack()
+
 	m.options.Logger.Printf("✓\t%s", migration.Name)
+
+	return true
 }
 
 // MigrateToLatest migrates the database to the latest version

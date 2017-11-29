@@ -7,6 +7,10 @@ import (
 	"testing"
 )
 
+func assertEquals(t *testing.T, expected, actual interface{}) {
+	t.Errorf("Expected: %s, Got: %s", expected, actual)
+}
+
 func TestGetRangeStr(t *testing.T) {
 	start, end := getMigrationRange("")
 
@@ -55,7 +59,7 @@ func TestMigrataur(t *testing.T) {
 		t.Error(err)
 	}
 
-	inst := New(newMockAdapter(), &Options{})
+	inst := New(newMockAdapter(), Options{})
 
 	migration := inst.NewMigration("migration01")
 
