@@ -3,6 +3,7 @@ package migrataur
 import (
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -46,6 +47,21 @@ func TestGetRangeStr(t *testing.T) {
 
 	if last != "migration07" {
 		shouldHaveBeenEquals(t, "migration07", last)
+	}
+}
+
+func TestGetRangeFromMigrations(t *testing.T) {
+	migrations := []*Migration{
+		&Migration{Name: "migration03"},
+		&Migration{Name: "migration04"},
+		&Migration{Name: "migration02"},
+		&Migration{Name: "migration01"},
+	}
+
+	str := getRangeFromMigrations(migrations)
+
+	if str != "migration03..migration01" {
+		shouldHaveBeenEquals(t, "migration03..migration01", str)
 	}
 }
 
@@ -241,7 +257,17 @@ func TestMigrationsSorting(t *testing.T) {
 		"migration04",
 	}
 
-	sortMigrations(migrations)
+	sortMigrations(migrations, dirUp)
+
+	for i := 0; i < len(expected); i++ {
+		if migrations[i].Name != expected[i] {
+			t.Errorf("Expecting %s, got %s when sorted", expected[i], migrations[i].Name)
+		}
+	}
+
+	sort.Sort(sort.Reverse(sort.StringSlice(expected)))
+
+	sortMigrations(migrations, dirDown)
 
 	for i := 0; i < len(expected); i++ {
 		if migrations[i].Name != expected[i] {

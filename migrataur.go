@@ -101,12 +101,15 @@ func (m *Migrataur) getAllFromFilesystem() []*Migration {
 	return migrations
 }
 
-func sortMigrations(migrations []*Migration) {
-	sort.Sort(ByName(migrations))
+func sortMigrations(migrations []*Migration, direction dir) {
+	if direction == dirUp {
+		sort.Sort(ByName(migrations))
+	} else {
+		sort.Sort(sort.Reverse(ByName(migrations)))
+	}
 }
 
-// GetAll retrieve all migrations for the current instance. It will list applied and pending migrations
-func (m *Migrataur) GetAll() []*Migration {
+func (m *Migrataur) getAllMigrations(direction dir) []*Migration {
 
 	fileSystemMigrations := m.getAllFromFilesystem()
 	adapterMigrations, err := m.adapter.GetAll()
@@ -132,7 +135,7 @@ func (m *Migrataur) GetAll() []*Migration {
 		fsMigration.hasBeenAppliedAt(*mig.AppliedAt)
 	}
 
-	sortMigrations(fileSystemMigrations)
+	sortMigrations(fileSystemMigrations, direction)
 
 	return fileSystemMigrations
 }
@@ -151,19 +154,32 @@ func getMigrationRange(rangeStr string) (first, last string) {
 	return splitted[0], splitted[1]
 }
 
-// Migrate migrates the database.
-// rangeOrName can be the exact migration name or a range such as <migration>..<another migration name>
-func (m *Migrataur) Migrate(rangeOrName string) {
-	m.options.Logger.Printf("Applying %s", rangeOrName)
+func getRangeFromMigrations(migrations []*Migration) string {
+	if len(migrations) > 0 {
+		return fmt.Sprintf("%s..%s", migrations[0].Name, migrations[len(migrations)-1].Name)
+	}
+
+	return ""
+}
+
+func (m *Migrataur) run(rangeOrName string, direction dir) []*Migration {
+	appliedMigrations := []*Migration{}
+
+	if rangeOrName == "" {
+		return appliedMigrations
+	}
 
 	start, end := getMigrationRange(rangeOrName)
 
 	startApplied := false
 
-	for _, migration := range m.GetAll() {
+	for _, migration := range m.getAllMigrations(direction) {
 		if !startApplied {
 			if strings.Contains(migration.Name, start) {
-				m.applyMigration(migration)
+
+				if m.runStep(migration, direction) {
+					appliedMigrations = append(appliedMigrations, migration)
+				}
 
 				startApplied = true
 
@@ -173,7 +189,9 @@ func (m *Migrataur) Migrate(rangeOrName string) {
 				}
 			}
 		} else {
-			m.applyMigration(migration)
+			if m.runStep(migration, direction) {
+				appliedMigrations = append(appliedMigrations, migration)
+			}
 
 			// If we reach the end, break
 			if strings.Contains(migration.Name, end) {
@@ -181,102 +199,86 @@ func (m *Migrataur) Migrate(rangeOrName string) {
 			}
 		}
 	}
+
+	return appliedMigrations
 }
 
-// Rollback inverts migration
-func (m *Migrataur) Rollback(rangeOrName string) {
-	m.options.Logger.Printf("Rollbacking %s", rangeOrName)
+func (m *Migrataur) runStep(migration *Migration, direction dir) bool {
 
-	end, start := getMigrationRange(rangeOrName)
+	// Do not execute commands if already applied or not applied at all when rolling back
+	if migration.HasBeenApplied() && direction == dirUp {
+		return false
+	} else if !migration.HasBeenApplied() && direction == dirDown {
+		return false
+	}
 
-	endApplied := false
-	migrations := m.GetAll()
+	command := migration.Up
 
-	sort.Sort(sort.Reverse(ByName(migrations)))
+	if direction == dirDown {
+		command = migration.Down
+	}
 
-	for _, migration := range migrations {
-		if !endApplied {
-			if strings.Contains(migration.Name, end) {
-				m.rollbackMigration(migration)
+	if err := m.adapter.Exec(command); err != nil {
+		m.options.Logger.Panicf("✗\t%s: %s", migration.Name, err)
+	}
 
-				endApplied = true
+	if direction == dirUp {
+		now := time.Now().UTC()
 
-				if start == "" || start == end {
-					break
-				}
-			}
-		} else {
-			m.rollbackMigration(migration)
-
-			if strings.Contains(migration.Name, start) {
-				break
-			}
+		if err := m.adapter.AddMigration(migration.Name, now); err != nil {
+			m.options.Logger.Panicf("✗\t%s: %s", migration.Name, err)
 		}
+
+		migration.hasBeenAppliedAt(now)
+	} else {
+		if err := m.adapter.RemoveMigration(migration.Name); err != nil {
+			m.options.Logger.Panicf("✗\t%s: %s", migration.Name, err)
+		}
+
+		migration.hasBeenRolledBack()
 	}
-}
-
-// TODO: We should merge apply and rollback into one function
-// and write tests for Rollback
-func (m *Migrataur) applyMigration(migration *Migration) bool {
-	if migration.HasBeenApplied() {
-		return false
-	}
-
-	if err := m.adapter.Exec(migration.Up); err != nil {
-		m.options.Logger.Panicf("✗\t%s: %s", migration.Name, err)
-	}
-
-	now := time.Now().UTC()
-
-	if err := m.adapter.AddMigration(migration.Name, now); err != nil {
-		m.options.Logger.Panicf("✗\t%s: %s", migration.Name, err)
-	}
-
-	migration.hasBeenAppliedAt(now)
 
 	m.options.Logger.Printf("✓\t%s", migration.Name)
 
 	return true
 }
 
-func (m *Migrataur) rollbackMigration(migration *Migration) bool {
-	if !migration.HasBeenApplied() {
-		return false
-	}
+// GetAll retrieve all migrations for the current instance. It will list applied and pending migrations
+func (m *Migrataur) GetAll() []*Migration {
+	return m.getAllMigrations(dirUp)
+}
 
-	if err := m.adapter.Exec(migration.Down); err != nil {
-		m.options.Logger.Panicf("✗\t%s: %s", migration.Name, err)
-	}
+// Migrate migrates the database and returns an array of effectively applied migrations (it will
+// not contains those that were already applied.
+// rangeOrName can be the exact migration name or a range such as <migration>..<another migration name>
+func (m *Migrataur) Migrate(rangeOrName string) []*Migration {
+	m.options.Logger.Printf("Applying %s", rangeOrName)
 
-	if err := m.adapter.RemoveMigration(migration.Name); err != nil {
-		m.options.Logger.Panicf("✗\t%s: %s", migration.Name, err)
-	}
-
-	migration.hasBeenRolledBack()
-
-	m.options.Logger.Printf("✓\t%s", migration.Name)
-
-	return true
+	return m.run(rangeOrName, dirUp)
 }
 
 // MigrateToLatest migrates the database to the latest version
-func (m *Migrataur) MigrateToLatest() {
+func (m *Migrataur) MigrateToLatest() []*Migration {
 	m.options.Logger.Print("Applying all pending migrations")
 
-	for _, migration := range m.GetAll() {
-		m.applyMigration(migration)
-	}
+	migrations := m.getAllMigrations(dirUp)
+
+	return m.run(getRangeFromMigrations(migrations), dirUp)
+}
+
+// Rollback inverts migrations and return an array of effectively rollbacked migrations
+// (it will not contains those that were not applied).
+func (m *Migrataur) Rollback(rangeOrName string) []*Migration {
+	m.options.Logger.Printf("Rollbacking %s", rangeOrName)
+
+	return m.run(rangeOrName, dirDown)
 }
 
 // Reset resets the database to its initial state
-func (m *Migrataur) Reset() {
+func (m *Migrataur) Reset() []*Migration {
 	m.options.Logger.Print("Resetting database")
 
-	migrations := m.GetAll()
+	migrations := m.getAllMigrations(dirDown)
 
-	sort.Sort(sort.Reverse(ByName(migrations)))
-
-	for _, migration := range migrations {
-		m.rollbackMigration(migration)
-	}
+	return m.run(getRangeFromMigrations(migrations), dirDown)
 }
