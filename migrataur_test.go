@@ -50,27 +50,16 @@ func TestGetRangeStr(t *testing.T) {
 	}
 }
 
-func TestGetRangeFromMigrations(t *testing.T) {
-	migrations := []*Migration{
-		&Migration{Name: "migration03"},
-		&Migration{Name: "migration04"},
-		&Migration{Name: "migration02"},
-		&Migration{Name: "migration01"},
-	}
-
-	str := getRangeFromMigrations(migrations)
-
-	if str != "migration03..migration01" {
-		shouldHaveBeenEquals(t, "migration03..migration01", str)
-	}
-}
-
 func TestMigrataurInit(t *testing.T) {
 	cleanUpMigrationsDir()
 
 	instance := New(&mockAdapter{}, DefaultOptions)
 
-	migration := instance.Init()
+	migration, err := instance.Init()
+
+	if err != nil {
+		t.Error(err)
+	}
 
 	if migration == nil {
 		t.Error("Initial migration should not be nil")

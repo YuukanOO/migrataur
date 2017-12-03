@@ -25,20 +25,22 @@ type Logger interface {
 
 // Options represents migrataur options to give to an instance
 type Options struct {
-	Logger            Logger
-	Directory         string
-	Extension         string
-	SequenceGenerator func() string
-	MarshalOptions    MarshalOptions
+	Logger               Logger
+	Directory            string
+	Extension            string
+	InitialMigrationName string
+	SequenceGenerator    func() string
+	MarshalOptions       MarshalOptions
 }
 
 // DefaultOptions represents the default migrataur options
 var DefaultOptions = Options{
-	Logger:            log.New(os.Stdout, "", log.LstdFlags),
-	Directory:         "./migrations",
-	Extension:         ".sql",
-	SequenceGenerator: GetCurrentTimeFormatted,
-	MarshalOptions:    DefaultMarshalOptions,
+	Logger:               log.New(os.Stdout, "", log.LstdFlags),
+	Directory:            "./migrations",
+	Extension:            ".sql",
+	InitialMigrationName: "initMigrataur",
+	SequenceGenerator:    GetCurrentTimeFormatted,
+	MarshalOptions:       DefaultMarshalOptions,
 }
 
 // Extend self options with the given one. It means that if a field is not
@@ -65,6 +67,10 @@ func (opts Options) Extend(other Options) Options {
 
 	if result.Extension == "" {
 		result.Extension = other.Extension
+	}
+
+	if result.InitialMigrationName == "" {
+		result.InitialMigrationName = other.InitialMigrationName
 	}
 
 	// Sanitize extension

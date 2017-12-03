@@ -14,8 +14,8 @@ func newMockAdapter() *mockAdapter {
 	return &mockAdapter{}
 }
 
-func (a *mockAdapter) GetInitialMigration() *Migration {
-	return &Migration{Name: "initMigrataur"}
+func (a *mockAdapter) GetInitialMigration(name string) *Migration {
+	return &Migration{Name: name}
 }
 
 func (a *mockAdapter) AddMigration(name string, at time.Time) error {

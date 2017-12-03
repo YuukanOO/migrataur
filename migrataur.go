@@ -38,21 +38,18 @@ func (m *Migrataur) getMigrationFullpath(name string) string {
 
 // Init writes the initial migration provided by the adapter to create the needed
 // migrations table, you should call it at the start of your project.
-func (m *Migrataur) Init() *Migration {
+func (m *Migrataur) Init() (*Migration, error) {
 
-	initialMigration := m.adapter.GetInitialMigration()
-
-	// Updates the name based on the generated path
-	fullPath := m.getMigrationFullpath(initialMigration.Name)
-	initialMigration.Name = filepath.Base(fullPath)
+	fullPath := m.getMigrationFullpath(m.options.InitialMigrationName)
+	initialMigration := m.adapter.GetInitialMigration(filepath.Base(fullPath))
 
 	if err := initialMigration.WriteTo(fullPath, m.options.MarshalOptions); err != nil {
-		m.options.Logger.Panic(err)
+		return nil, err
 	}
 
 	m.options.Logger.Printf("Migrataur initialized with %s", initialMigration.Name)
 
-	return initialMigration
+	return initialMigration, nil
 }
 
 // NewMigration creates a new migration in the configured folder and returns the instance of the migration
@@ -154,22 +151,12 @@ func getMigrationRange(rangeStr string) (first, last string) {
 	return splitted[0], splitted[1]
 }
 
-func getRangeFromMigrations(migrations []*Migration) string {
-	if len(migrations) > 0 {
-		return fmt.Sprintf("%s..%s", migrations[0].Name, migrations[len(migrations)-1].Name)
-	}
-
-	return ""
-}
-
-func (m *Migrataur) run(rangeOrName string, direction dir) []*Migration {
+func (m *Migrataur) runFrom(start, end string, direction dir) ([]*Migration, error) {
 	appliedMigrations := []*Migration{}
 
-	if rangeOrName == "" {
-		return appliedMigrations
+	if start == "" {
+		return appliedMigrations, nil
 	}
-
-	start, end := getMigrationRange(rangeOrName)
 
 	startApplied := false
 
@@ -199,6 +186,14 @@ func (m *Migrataur) run(rangeOrName string, direction dir) []*Migration {
 			}
 		}
 	}
+
+	return appliedMigrations, nil
+}
+
+func (m *Migrataur) run(rangeOrName string, direction dir) []*Migration {
+	start, end := getMigrationRange(rangeOrName)
+
+	appliedMigrations, _ := m.runFrom(start, end, direction)
 
 	return appliedMigrations
 }
@@ -245,6 +240,8 @@ func (m *Migrataur) runStep(migration *Migration, direction dir) bool {
 
 // GetAll retrieve all migrations for the current instance. It will list applied and pending migrations
 func (m *Migrataur) GetAll() []*Migration {
+	m.options.Logger.Print("Fetching migrations")
+
 	return m.getAllMigrations(dirUp)
 }
 
@@ -263,7 +260,13 @@ func (m *Migrataur) MigrateToLatest() []*Migration {
 
 	migrations := m.getAllMigrations(dirUp)
 
-	return m.run(getRangeFromMigrations(migrations), dirUp)
+	if len(migrations) == 0 {
+		return []*Migration{}
+	}
+
+	appliedMigrations, _ := m.runFrom(migrations[0].Name, migrations[len(migrations)-1].Name, dirUp)
+
+	return appliedMigrations
 }
 
 // Rollback inverts migrations and return an array of effectively rollbacked migrations
@@ -280,5 +283,11 @@ func (m *Migrataur) Reset() []*Migration {
 
 	migrations := m.getAllMigrations(dirDown)
 
-	return m.run(getRangeFromMigrations(migrations), dirDown)
+	if len(migrations) == 0 {
+		return []*Migration{}
+	}
+
+	appliedMigrations, _ := m.runFrom(migrations[0].Name, migrations[len(migrations)-1].Name, dirDown)
+
+	return appliedMigrations
 }
