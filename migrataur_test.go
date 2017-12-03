@@ -79,7 +79,11 @@ func TestMigrataurNew(t *testing.T) {
 
 	instance := New(&mockAdapter{}, DefaultOptions)
 
-	migration := instance.NewMigration("migration01")
+	migration, err := instance.NewMigration("migration01")
+
+	if err != nil {
+		t.Error(err)
+	}
 
 	if !strings.HasSuffix(migration.Name, "migration01.sql") {
 		t.Error("Migration name should contains migration01.sql")
@@ -97,7 +101,11 @@ func TestMigrataurMigrateToLatest(t *testing.T) {
 	instance.NewMigration("migration03")
 	instance.NewMigration("migration04")
 
-	instance.MigrateToLatest()
+	_, err := instance.MigrateToLatest()
+
+	if err != nil {
+		t.Error(err)
+	}
 
 	if len(adapter.appliedMigrations) != 4 {
 		shouldHaveBeenEquals(t, 4, len(adapter.appliedMigrations))
@@ -117,20 +125,32 @@ func TestMigrataurMigrate(t *testing.T) {
 	instance.NewMigration("migration05")
 	instance.NewMigration("migration06")
 
-	instance.Migrate("migration02..migration04")
+	_, err := instance.Migrate("migration02..migration04")
+
+	if err != nil {
+		t.Error(err)
+	}
 
 	if len(adapter.appliedMigrations) != 3 {
 		shouldHaveBeenEquals(t, 3, len(adapter.appliedMigrations))
 	}
 
-	instance.Migrate("migration05")
+	_, err = instance.Migrate("migration05")
+
+	if err != nil {
+		t.Error(err)
+	}
 
 	if len(adapter.appliedMigrations) != 4 {
 		shouldHaveBeenEquals(t, 4, len(adapter.appliedMigrations))
 	}
 
 	// Migrations count should not have changed
-	instance.Migrate("migration05")
+	_, err = instance.Migrate("migration05")
+
+	if err != nil {
+		t.Error(err)
+	}
 
 	if len(adapter.appliedMigrations) != 4 {
 		shouldHaveBeenEquals(t, 4, len(adapter.appliedMigrations))
@@ -150,7 +170,11 @@ func TestMigrataurGetAll(t *testing.T) {
 	instance.Migrate("migration01..migration02")
 	instance.Migrate("migration04")
 
-	migrations := instance.GetAll()
+	migrations, err := instance.GetAll()
+
+	if err != nil {
+		t.Error(err)
+	}
 
 	if len(migrations) != 4 {
 		shouldHaveBeenEquals(t, 4, len(migrations))
@@ -180,26 +204,42 @@ func TestMigrataurRollback(t *testing.T) {
 	instance.NewMigration("migration04")
 	instance.NewMigration("migration05")
 
-	instance.MigrateToLatest()
+	_, err := instance.MigrateToLatest()
+
+	if err != nil {
+		t.Error(err)
+	}
 
 	if len(adapter.appliedMigrations) != 5 {
 		shouldHaveBeenEquals(t, 5, len(adapter.appliedMigrations))
 	}
 
-	instance.Rollback("migration05..migration03")
+	_, err = instance.Rollback("migration05..migration03")
+
+	if err != nil {
+		t.Error(err)
+	}
 
 	if len(adapter.appliedMigrations) != 2 {
 		shouldHaveBeenEquals(t, 2, len(adapter.appliedMigrations))
 	}
 
-	instance.Rollback("migration02")
+	_, err = instance.Rollback("migration02")
+
+	if err != nil {
+		t.Error(err)
+	}
 
 	if len(adapter.appliedMigrations) != 1 {
 		shouldHaveBeenEquals(t, 1, len(adapter.appliedMigrations))
 	}
 
 	// Twice should redo the down func
-	instance.Rollback("migration02")
+	_, err = instance.Rollback("migration02")
+
+	if err != nil {
+		t.Error(err)
+	}
 
 	if len(adapter.appliedMigrations) != 1 {
 		shouldHaveBeenEquals(t, 1, len(adapter.appliedMigrations))
@@ -218,13 +258,21 @@ func TestMigrataurReset(t *testing.T) {
 	instance.NewMigration("migration03")
 	instance.NewMigration("migration04")
 
-	instance.MigrateToLatest()
+	_, err := instance.MigrateToLatest()
+
+	if err != nil {
+		t.Error(err)
+	}
 
 	if len(adapter.appliedMigrations) != 4 {
 		shouldHaveBeenEquals(t, 4, len(adapter.appliedMigrations))
 	}
 
-	instance.Reset()
+	_, err = instance.Reset()
+
+	if err != nil {
+		t.Error(err)
+	}
 
 	if len(adapter.appliedMigrations) != 0 {
 		shouldHaveBeenEquals(t, 0, len(adapter.appliedMigrations))

@@ -13,9 +13,6 @@ import (
 )
 
 const (
-	// DefaultInitialMigrationName represents the name for the initial migration
-	// used to create the migrations table
-	DefaultInitialMigrationName = "initMigrataur"
 	// DefaultTableName represents the name of the migrations table
 	DefaultTableName = "__migrations"
 	// DefaultPlaceholder holds the default value for the sql placeholder
@@ -56,9 +53,9 @@ func (a *Adapter) getPlaceholder(idx int) string {
 	return strings.Replace(a.placeholder, "{i}", strconv.Itoa(idx), -1)
 }
 
-func (a *Adapter) GetInitialMigration() *migrataur.Migration {
+func (a *Adapter) GetInitialMigration(name string) *migrataur.Migration {
 	return &migrataur.Migration{
-		Name: DefaultInitialMigrationName,
+		Name: name,
 		Up: fmt.Sprintf(`
 create table %s(
 	name varchar(250) primary key,

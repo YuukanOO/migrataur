@@ -42,6 +42,10 @@ func TestExtendEmptyOptions(t *testing.T) {
 	if extended.MarshalOptions != DefaultOptions.MarshalOptions {
 		shouldHaveBeenEquals(t, DefaultOptions.MarshalOptions, extended.MarshalOptions)
 	}
+
+	if extended.InitialMigrationName != DefaultOptions.InitialMigrationName {
+		shouldHaveBeenEquals(t, DefaultOptions.InitialMigrationName, extended.InitialMigrationName)
+	}
 }
 
 func TestExtendOptions(t *testing.T) {
