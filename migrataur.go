@@ -200,10 +200,15 @@ func (m *Migrataur) run(rangeOrName string, direction dir) []*Migration {
 
 func (m *Migrataur) runStep(migration *Migration, direction dir) bool {
 
+	shouldSkip := false
+
 	// Do not execute commands if already applied or not applied at all when rolling back
-	if migration.HasBeenApplied() && direction == dirUp {
-		return false
-	} else if !migration.HasBeenApplied() && direction == dirDown {
+	if (migration.HasBeenApplied() && direction == dirUp) || (!migration.HasBeenApplied() && direction == dirDown) {
+		shouldSkip = true
+	}
+
+	if shouldSkip {
+		m.options.Logger.Printf("—\t%s", migration.Name)
 		return false
 	}
 
