@@ -19,7 +19,7 @@ func TestMarshalOptions(t *testing.T) {
 
 func TestExtendEmptyOptions(t *testing.T) {
 	opts := Options{}
-	extended := opts.Extend(DefaultOptions)
+	extended := opts.ExtendWith(DefaultOptions)
 
 	fullpath, _ := filepath.Abs(DefaultOptions.Directory)
 
@@ -50,7 +50,7 @@ func TestExtendOptions(t *testing.T) {
 		MarshalOptions: marshalOpts,
 	}
 
-	extended := opts.Extend(DefaultOptions)
+	extended := opts.ExtendWith(DefaultOptions)
 
 	fullpath, _ := filepath.Abs("./MigrationsGoesHere")
 

@@ -13,8 +13,10 @@ import (
 type dir int
 
 const (
-	dirUp   dir = iota
-	dirDown     = iota
+	// dirUp when applying migrations
+	dirUp dir = iota
+	// dirDown when rolling them back
+	dirDown = iota
 )
 
 // Migrataur represents an instance configurated for a particular use.
@@ -28,7 +30,7 @@ type Migrataur struct {
 func New(adapter Adapter, opts Options) *Migrataur {
 	return &Migrataur{
 		adapter: adapter,
-		options: opts.Extend(DefaultOptions),
+		options: opts.ExtendWith(DefaultOptions),
 	}
 }
 
