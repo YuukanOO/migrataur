@@ -33,9 +33,7 @@ func TestMigrationMarshaling(t *testing.T) {
 		opts.UpStart, migration.Up, opts.UpEnd,
 		opts.DownStart, migration.Down, opts.DownEnd)
 
-	if content != expected {
-		shouldHaveBeenEquals(t, expected, content)
-	}
+	assertEquals(t, expected, content)
 }
 
 func TestMigrationUnmarshaling(t *testing.T) {
@@ -57,11 +55,6 @@ func TestMigrationUnmarshaling(t *testing.T) {
 		t.Error(err)
 	}
 
-	if migration.Up != up {
-		shouldHaveBeenEquals(t, up, migration.Up)
-	}
-
-	if migration.Down != down {
-		shouldHaveBeenEquals(t, down, migration.Down)
-	}
+	assertEquals(t, up, migration.Up)
+	assertEquals(t, down, migration.Down)
 }

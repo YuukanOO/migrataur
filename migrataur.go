@@ -152,14 +152,11 @@ func (m *Migrataur) getAllMigrations(direction dir) ([]*Migration, error) {
 func getMigrationRange(rangeStr string) (first, last string) {
 	splitted := strings.Split(rangeStr, "..")
 
-	switch len(splitted) {
-	case 0:
-		return "", ""
-	case 1:
+	if len(splitted) == 1 {
 		return splitted[0], ""
-	default:
-		return splitted[0], splitted[1]
 	}
+
+	return splitted[0], splitted[1]
 }
 
 func (m *Migrataur) runFrom(start, end string, direction dir) ([]*Migration, error) {
