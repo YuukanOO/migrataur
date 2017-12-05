@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/YuukanOO/migrataur"
 )
@@ -57,25 +56,26 @@ func (a *Adapter) getPlaceholder(idx int) string {
 func (a *Adapter) GetInitialMigration(name string) *migrataur.Migration {
 	return &migrataur.Migration{
 		Name: name,
-		Up: fmt.Sprintf(`
-create table %s(
+		Up: fmt.Sprintf(`create table %s(
 	name varchar(250) primary key,
 	applied_at timestamp not null
-);
-`, a.tableName),
+);`, a.tableName),
 		Down: fmt.Sprintf("drop table %s;", a.tableName),
 	}
 }
 
-func (a *Adapter) AddMigration(completeName string, at time.Time) error {
-	_, err := a.db.Exec(fmt.Sprintf("insert into %s values (%s, %s)", a.tableName, a.getPlaceholder(1), a.getPlaceholder(2)), completeName, at)
+func (a *Adapter) AddMigration(migration *migrataur.Migration) error {
+	_, err := a.db.Exec(fmt.Sprintf("insert into %s values (%s, %s)", a.tableName, a.getPlaceholder(1), a.getPlaceholder(2)), migration.Name, *migration.AppliedAt)
 
 	return err
 }
 
-func (a *Adapter) RemoveMigration(completeName string) error {
-	// Yeah, when resetting the relation does not exist anymore :/ I should find a way
-	_, err := a.db.Exec(fmt.Sprintf("delete from %s where name = %s", a.tableName, a.getPlaceholder(1)), completeName)
+func (a *Adapter) RemoveMigration(migration *migrataur.Migration) error {
+	if migration.IsFirst() {
+		return nil
+	}
+
+	_, err := a.db.Exec(fmt.Sprintf("delete from %s where name = %s", a.tableName, a.getPlaceholder(1)), migration.Name)
 
 	return err
 }

@@ -125,6 +125,7 @@ func (m *Migrataur) getAllMigrations(direction dir) ([]*Migration, error) {
 		return nil, err
 	}
 
+	migrationsCount := len(fileSystemMigrations)
 	adapterMigrations, err := m.adapter.GetAll()
 
 	if err != nil {
@@ -149,6 +150,17 @@ func (m *Migrataur) getAllMigrations(direction dir) ([]*Migration, error) {
 	}
 
 	sortMigrations(fileSystemMigrations, direction)
+
+	// Find the initial migration and marks it. This is used primarly by adapters to
+	// perform specific behaviors
+	if migrationsCount > 0 {
+		switch direction {
+		case dirUp:
+			fileSystemMigrations[0].markAsFirst()
+		case dirDown:
+			fileSystemMigrations[migrationsCount-1].markAsFirst()
+		}
+	}
 
 	return fileSystemMigrations, nil
 }
@@ -255,21 +267,20 @@ func (m *Migrataur) runStep(migration *Migration, direction dir) (bool, error) {
 	}
 
 	if direction == dirUp {
-		now := time.Now().UTC()
+		migration.hasBeenAppliedAt(time.Now().UTC())
 
-		if err := m.adapter.AddMigration(migration.Name, now); err != nil {
+		if err := m.adapter.AddMigration(migration); err != nil {
 			m.Options.Logger.Fatalf("✗\t%s: %s", migration.Name, err)
 			return false, err
 		}
 
-		migration.hasBeenAppliedAt(now)
 	} else {
-		if err := m.adapter.RemoveMigration(migration.Name); err != nil {
+		migration.hasBeenRolledBack()
+
+		if err := m.adapter.RemoveMigration(migration); err != nil {
 			m.Options.Logger.Fatalf("✗\t%s: %s", migration.Name, err)
 			return false, err
 		}
-
-		migration.hasBeenRolledBack()
 	}
 
 	m.Options.Logger.Printf("✓\t%s", migration.Name)

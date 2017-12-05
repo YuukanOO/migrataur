@@ -82,6 +82,7 @@ func TestMigrataurMigrateToLatest(t *testing.T) {
 	assert(t).
 		nil(err).
 		equals(4, len(applied)).
+		equals(true, applied[0].IsFirst()).
 		migrationsEquals(applied, "migration01", "migration02", "migration03", "migration04")
 }
 
@@ -215,6 +216,7 @@ func TestMigrataurReset(t *testing.T) {
 	assert.
 		nil(err).
 		equals(4, len(applied)).
+		equals(true, applied[3].IsFirst()).
 		migrationsEquals(applied, "migration04", "migration03", "migration02", "migration01")
 }
 
