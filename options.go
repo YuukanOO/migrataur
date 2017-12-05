@@ -43,7 +43,7 @@ var DefaultOptions = Options{
 	MarshalOptions:       DefaultMarshalOptions,
 }
 
-// ExtendWith self options with the given one. It means that if a field is not
+// ExtendWith extends self with the given Options. It means that if a field is not
 // present in this option, it will be replaced by the one in the other Options.
 func (opts Options) ExtendWith(other Options) Options {
 	result := opts

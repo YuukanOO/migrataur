@@ -1,3 +1,5 @@
+// Package migrataur is a simple migration tool for the Go language. It's written as
+// a library that needs an adapter to work. It has been build with simplicity in mind.
 package migrataur
 
 import (
@@ -106,9 +108,9 @@ func (m *Migrataur) getAllFromFilesystem() ([]*Migration, error) {
 // sortMigrations sorts given migrations by their name.
 func sortMigrations(migrations []*Migration, direction dir) {
 	if direction == dirUp {
-		sort.Sort(ByName(migrations))
+		sort.Sort(byName(migrations))
 	} else {
-		sort.Sort(sort.Reverse(ByName(migrations)))
+		sort.Sort(sort.Reverse(byName(migrations)))
 	}
 }
 
@@ -161,7 +163,7 @@ func getMigrationRange(rangeStr string) (first, last string) {
 	return splitted[0], splitted[1]
 }
 
-func (m *Migrataur) runFrom(start, end string, direction dir) ([]*Migration, error) {
+func (m *Migrataur) runRange(start, end string, direction dir) ([]*Migration, error) {
 	appliedMigrations := []*Migration{}
 
 	if start == "" {
@@ -221,7 +223,7 @@ func (m *Migrataur) runFrom(start, end string, direction dir) ([]*Migration, err
 func (m *Migrataur) run(rangeOrName string, direction dir) ([]*Migration, error) {
 	start, end := getMigrationRange(rangeOrName)
 
-	return m.runFrom(start, end, direction)
+	return m.runRange(start, end, direction)
 }
 
 // runStep runs a single migration and returns if it has been applied. If the migration
@@ -305,7 +307,7 @@ func (m *Migrataur) MigrateToLatest() ([]*Migration, error) {
 		return []*Migration{}, nil
 	}
 
-	return m.runFrom(migrations[0].Name, migrations[len(migrations)-1].Name, dirUp)
+	return m.runRange(migrations[0].Name, migrations[len(migrations)-1].Name, dirUp)
 }
 
 // Rollback inverts migrations and return an array of effectively rollbacked migrations
@@ -330,5 +332,5 @@ func (m *Migrataur) Reset() ([]*Migration, error) {
 		return []*Migration{}, nil
 	}
 
-	return m.runFrom(migrations[0].Name, migrations[len(migrations)-1].Name, dirDown)
+	return m.runRange(migrations[0].Name, migrations[len(migrations)-1].Name, dirDown)
 }

@@ -8,28 +8,7 @@ import (
 	"time"
 )
 
-// MarshalOptions holds configuration for the migration marshaling & unmarshaling
-type MarshalOptions struct {
-	Header    string
-	UpStart   string
-	UpEnd     string
-	DownStart string
-	DownEnd   string
-}
-
-var (
-	// DefaultMarshalOptions holds default marshal options for the migration
-	DefaultMarshalOptions = MarshalOptions{
-		Header:    "-- migration",
-		UpStart:   "-- +migrataur up",
-		UpEnd:     "-- -migrataur up",
-		DownStart: "-- +migrataur down",
-		DownEnd:   "-- -migrataur down",
-	}
-	emptyMarshalOptions = MarshalOptions{}
-)
-
-// Migration represents a database migration :)
+// Migration represents a database migration, nothing more.
 type Migration struct {
 	Name      string
 	Up        string
@@ -37,12 +16,12 @@ type Migration struct {
 	AppliedAt *time.Time
 }
 
-// ByName sort an array of migrations by their name, use it with sort.Sort and the like
-type ByName []*Migration
+// byName sort an array of migrations by their name, use it with sort.Sort and the like
+type byName []*Migration
 
-func (m ByName) Len() int           { return len(m) }
-func (m ByName) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
-func (m ByName) Less(i, j int) bool { return m[i].Name < m[j].Name }
+func (m byName) Len() int           { return len(m) }
+func (m byName) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
+func (m byName) Less(i, j int) bool { return m[i].Name < m[j].Name }
 
 func (m *Migration) String() string {
 	ticked := " "

@@ -48,36 +48,28 @@ func (a *mockAdapter) GetAll() ([]*Migration, error) {
 
 func TestMockAdapter(t *testing.T) {
 	adapter := newMockAdapter()
+	assert := assert(t)
 
-	if len(adapter.appliedMigrations) != 0 {
-		t.Error("Adapter should contains no migration")
-	}
+	assert.equals(0, len(adapter.appliedMigrations))
 
-	if migs, _ := adapter.GetAll(); len(migs) != 0 {
-		t.Error("GetAll should returns an empty array")
-	}
+	migrations, err := adapter.GetAll()
 
-	if err := adapter.AddMigration("migration01.sql", time.Now()); err != nil {
-		t.Error(err)
-	}
+	assert.
+		nil(err).
+		equals(0, len(migrations)).
+		nil(adapter.AddMigration("migration01.sql", time.Now())).
+		nil(adapter.AddMigration("migration02.sql", time.Now()))
 
-	if err := adapter.AddMigration("migration02.sql", time.Now()); err != nil {
-		t.Error(err)
-	}
+	migrations, err = adapter.GetAll()
 
-	migs, _ := adapter.GetAll()
+	assert.
+		nil(err).
+		equals(2, len(migrations)).
+		nil(adapter.RemoveMigration("migration01.sql"))
 
-	if len(migs) != 2 {
-		t.Error("Should contains 2 migrations")
-	}
+	migrations, err = adapter.GetAll()
 
-	if err := adapter.RemoveMigration("migration01.sql"); err != nil {
-		t.Error(err)
-	}
-
-	migs, _ = adapter.GetAll()
-
-	if len(migs) != 1 {
-		t.Error("Should contains 1 migration now")
-	}
+	assert.
+		nil(err).
+		equals(1, len(migrations))
 }

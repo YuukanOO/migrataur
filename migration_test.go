@@ -6,6 +6,8 @@ import (
 )
 
 func TestMigrationMarshaling(t *testing.T) {
+	assert := assert(t)
+
 	migration := Migration{
 		Name: "migration01",
 		Up:   "create table horses (name varchar(50) primary key);",
@@ -15,9 +17,7 @@ func TestMigrationMarshaling(t *testing.T) {
 
 	data, err := migration.Marshal(opts)
 
-	if err != nil {
-		t.Error(err)
-	}
+	assert.nil(err)
 
 	content := string(data)
 	expected := fmt.Sprintf(`%s %s
@@ -33,7 +33,7 @@ func TestMigrationMarshaling(t *testing.T) {
 		opts.UpStart, migration.Up, opts.UpEnd,
 		opts.DownStart, migration.Down, opts.DownEnd)
 
-	assertEquals(t, expected, content)
+	assert.equals(expected, content)
 }
 
 func TestMigrationUnmarshaling(t *testing.T) {
@@ -55,6 +55,7 @@ func TestMigrationUnmarshaling(t *testing.T) {
 		t.Error(err)
 	}
 
-	assertEquals(t, up, migration.Up)
-	assertEquals(t, down, migration.Down)
+	assert(t).
+		equals(up, migration.Up).
+		equals(down, migration.Down)
 }

@@ -10,36 +10,6 @@ import (
 
 // Utility funcs used for testing
 
-func assertEquals(t *testing.T, expected, actual interface{}) {
-	if actual != expected {
-		t.Errorf("Expected: %s, Got: %s", expected, actual)
-	}
-}
-
-func assertNotEquals(t *testing.T, expected, actual interface{}) {
-	if actual == expected {
-		t.Errorf("Should be not equals: %s, And: %s", expected, actual)
-	}
-}
-
-func assertEqualsWith(t *testing.T, predicate bool, expected, actual interface{}) {
-	if !predicate {
-		t.Errorf("Expected: %s, Got: %s", expected, actual)
-	}
-}
-
-func assertNotNil(t *testing.T, actual interface{}) {
-	if actual == nil {
-		t.Error("Should not be nil!")
-	}
-}
-
-func assertNil(t *testing.T, actual interface{}) {
-	if actual != nil {
-		t.Error(actual)
-	}
-}
-
 func cleanUpMigrationsDir() {
 	fullpath, _ := filepath.Abs(DefaultOptions.Directory)
 
@@ -48,32 +18,26 @@ func cleanUpMigrationsDir() {
 	}
 }
 
-func assertMigrationsEquals(t *testing.T, migrations []*Migration, names ...string) {
-	lenActual, lenExpected := len(migrations), len(names)
-
-	assertEquals(t, lenExpected, lenActual)
-
-	for i := 0; i < len(migrations); i++ {
-		assertEquals(t, names[i], migrations[i].Name)
-	}
-}
-
 func TestGetRangeStr(t *testing.T) {
+	assert := assert(t)
+
 	first, last := getMigrationRange("")
 
-	if first != "" || last != "" {
-		t.Error("Start and end should be empty")
-	}
+	assert.
+		equals("", first).
+		equals("", last)
 
 	first, last = getMigrationRange("migration01")
 
-	assertEquals(t, "migration01", first)
-	assertEquals(t, "", last)
+	assert.
+		equals("migration01", first).
+		equals("", last)
 
 	first, last = getMigrationRange("migration02..migration07")
 
-	assertEquals(t, "migration02", first)
-	assertEquals(t, "migration07", last)
+	assert.
+		equals("migration02", first).
+		equals("migration07", last)
 }
 
 func TestMigrataurInit(t *testing.T) {
@@ -83,10 +47,11 @@ func TestMigrataurInit(t *testing.T) {
 
 	migration, err := instance.Init()
 
-	assertNotNil(t, migration)
-	assertNil(t, err)
-	assertEqualsWith(t, strings.HasSuffix(migration.Name, "initMigrataur.sql"), "initMigrataur.sql", migration.Name)
-	assertEquals(t, false, migration.HasBeenApplied())
+	assert(t).
+		notNil(migration).
+		nil(err).
+		contains(DefaultOptions.InitialMigrationName, migration.Name).
+		equals(false, migration.HasBeenApplied())
 }
 
 func TestMigrataurNew(t *testing.T) {
@@ -96,33 +61,36 @@ func TestMigrataurNew(t *testing.T) {
 
 	migration, err := instance.NewMigration("migration01")
 
-	assertNotNil(t, migration)
-	assertNil(t, err)
-	assertEqualsWith(t, strings.HasSuffix(migration.Name, "migration01.sql"), "migration01.sql", migration.Name)
+	assert(t).
+		notNil(migration).
+		nil(err).
+		contains("migration01.sql", migration.Name)
 }
 
 func TestMigrataurMigrateToLatest(t *testing.T) {
 	cleanUpMigrationsDir()
 
-	adapter := &mockAdapter{}
-	instance := New(adapter, DefaultOptions)
+	instance := New(&mockAdapter{}, DefaultOptions)
 
 	instance.NewMigration("migration01")
 	instance.NewMigration("migration02")
 	instance.NewMigration("migration03")
 	instance.NewMigration("migration04")
 
-	_, err := instance.MigrateToLatest()
+	applied, err := instance.MigrateToLatest()
 
-	assertNil(t, err)
-	assertEquals(t, 4, len(adapter.appliedMigrations))
+	assert(t).
+		nil(err).
+		equals(4, len(applied)).
+		migrationsEquals(applied, "migration01", "migration02", "migration03", "migration04")
 }
 
 func TestMigrataurMigrate(t *testing.T) {
 	cleanUpMigrationsDir()
 
-	adapter := &mockAdapter{}
-	instance := New(adapter, DefaultOptions)
+	assert := assert(t)
+
+	instance := New(&mockAdapter{}, DefaultOptions)
 
 	instance.NewMigration("migration01")
 	instance.NewMigration("migration02")
@@ -131,21 +99,25 @@ func TestMigrataurMigrate(t *testing.T) {
 	instance.NewMigration("migration05")
 	instance.NewMigration("migration06")
 
-	_, err := instance.Migrate("migration02..migration04")
+	applied, err := instance.Migrate("migration02..migration04")
 
-	assertNil(t, err)
-	assertEquals(t, 3, len(adapter.appliedMigrations))
+	assert.
+		nil(err).
+		equals(3, len(applied)).
+		migrationsEquals(applied, "migration02", "migration03", "migration04")
 
-	_, err = instance.Migrate("migration05")
+	applied, err = instance.Migrate("migration05")
 
-	assertNil(t, err)
-	assertEquals(t, 4, len(adapter.appliedMigrations))
+	assert.
+		nil(err).
+		equals(1, len(applied)).
+		migrationsEquals(applied, "migration05")
 
-	// Migrations count should not have changed
-	_, err = instance.Migrate("migration05")
+	applied, err = instance.Migrate("migration05")
 
-	assertNil(t, err)
-	assertEquals(t, 4, len(adapter.appliedMigrations))
+	assert.
+		nil(err).
+		equals(0, len(applied))
 }
 
 func TestMigrataurGetAll(t *testing.T) {
@@ -163,8 +135,9 @@ func TestMigrataurGetAll(t *testing.T) {
 
 	migrations, err := instance.GetAll()
 
-	assertNil(t, err)
-	assertEquals(t, 4, len(migrations))
+	assert(t).
+		nil(err).
+		equals(4, len(migrations))
 
 	for _, m := range migrations {
 		if strings.Contains(m.Name, "migration03") {
@@ -180,9 +153,9 @@ func TestMigrataurGetAll(t *testing.T) {
 func TestMigrataurRollback(t *testing.T) {
 	cleanUpMigrationsDir()
 
-	adapter := &mockAdapter{}
+	assert := assert(t)
 
-	instance := New(adapter, DefaultOptions)
+	instance := New(&mockAdapter{}, DefaultOptions)
 
 	instance.NewMigration("migration01")
 	instance.NewMigration("migration02")
@@ -190,49 +163,59 @@ func TestMigrataurRollback(t *testing.T) {
 	instance.NewMigration("migration04")
 	instance.NewMigration("migration05")
 
-	_, err := instance.MigrateToLatest()
+	applied, err := instance.MigrateToLatest()
 
-	assertNil(t, err)
-	assertEquals(t, 5, len(adapter.appliedMigrations))
+	assert.
+		nil(err).
+		equals(5, len(applied)).
+		migrationsEquals(applied, "migration01", "migration02", "migration03", "migration04", "migration05")
 
-	_, err = instance.Rollback("migration05..migration03")
+	applied, err = instance.Rollback("migration05..migration03")
 
-	assertNil(t, err)
-	assertEquals(t, 2, len(adapter.appliedMigrations))
+	assert.
+		nil(err).
+		equals(3, len(applied)).
+		migrationsEquals(applied, "migration05", "migration04", "migration03")
 
-	_, err = instance.Rollback("migration02")
+	applied, err = instance.Rollback("migration02")
 
-	assertNil(t, err)
-	assertEquals(t, 1, len(adapter.appliedMigrations))
+	assert.
+		nil(err).
+		equals(1, len(applied)).
+		migrationsEquals(applied, "migration02")
 
-	// Twice should redo the down func
-	_, err = instance.Rollback("migration02")
+	applied, err = instance.Rollback("migration02")
 
-	assertNil(t, err)
-	assertEquals(t, 1, len(adapter.appliedMigrations))
+	assert.
+		nil(err).
+		equals(0, len(applied))
 }
 
 func TestMigrataurReset(t *testing.T) {
 	cleanUpMigrationsDir()
 
-	adapter := &mockAdapter{}
+	assert := assert(t)
 
-	instance := New(adapter, DefaultOptions)
+	instance := New(&mockAdapter{}, DefaultOptions)
 
 	instance.NewMigration("migration01")
 	instance.NewMigration("migration02")
 	instance.NewMigration("migration03")
 	instance.NewMigration("migration04")
 
-	_, err := instance.MigrateToLatest()
+	applied, err := instance.MigrateToLatest()
 
-	assertNil(t, err)
-	assertEquals(t, 4, len(adapter.appliedMigrations))
+	assert.
+		nil(err).
+		equals(4, len(applied)).
+		migrationsEquals(applied, "migration01", "migration02", "migration03", "migration04")
 
-	_, err = instance.Reset()
+	applied, err = instance.Reset()
 
-	assertNil(t, err)
-	assertEquals(t, 0, len(adapter.appliedMigrations))
+	assert.
+		nil(err).
+		equals(4, len(applied)).
+		migrationsEquals(applied, "migration04", "migration03", "migration02", "migration01")
 }
 
 func TestMigrationsSorting(t *testing.T) {
