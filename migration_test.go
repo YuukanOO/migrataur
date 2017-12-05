@@ -20,17 +20,14 @@ func TestMigrationMarshaling(t *testing.T) {
 	assert.nil(err)
 
 	content := string(data)
-	expected := fmt.Sprintf(`%s %s
-%s
+	expected := fmt.Sprintf(`%s
 %s
 %s
 
 
 %s
 %s
-%s
-`, opts.Header, migration.Name,
-		opts.UpStart, migration.Up, opts.UpEnd,
+%s`, opts.UpStart, migration.Up, opts.UpEnd,
 		opts.DownStart, migration.Down, opts.DownEnd)
 
 	assert.equals(expected, content)

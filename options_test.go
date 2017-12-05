@@ -32,7 +32,6 @@ func TestExtendEmptyOptions(t *testing.T) {
 func TestExtendOptions(t *testing.T) {
 
 	marshalOpts := MarshalOptions{
-		Header:    "-- testing",
 		UpStart:   "-- up",
 		UpEnd:     "-- /up",
 		DownStart: "-- down",

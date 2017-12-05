@@ -59,16 +59,14 @@ func (m *Migration) IsFirst() bool {
 
 // Marshal serializes this migration
 func (m *Migration) Marshal(options MarshalOptions) (text []byte, err error) {
-	content := fmt.Sprintf(`%s %s
-%s
+	content := fmt.Sprintf(`%s
 %s
 %s
 
 
 %s
 %s
-%s
-`, options.Header, m.Name, options.UpStart, m.Up, options.UpEnd, options.DownStart, m.Down, options.DownEnd)
+%s`, options.UpStart, m.Up, options.UpEnd, options.DownStart, m.Down, options.DownEnd)
 
 	return []byte(content), nil
 }
