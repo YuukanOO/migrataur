@@ -6,7 +6,6 @@ pipeline:
   build:
     image: golang
     commands:
-      - go get
-      - go build
+      - go get ./...
       - go vet ./...
       - go test ./... --cover -v
