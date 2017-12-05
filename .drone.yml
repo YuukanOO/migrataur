@@ -8,5 +8,5 @@ pipeline:
     commands:
       - go get
       - go build
-      - go vet
-      - go test --cover -v
+      - go vet ./...
+      - go test ./... --cover -v

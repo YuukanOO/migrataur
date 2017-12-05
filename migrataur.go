@@ -24,7 +24,7 @@ const (
 // Migrataur represents an instance configurated for a particular use.
 // This is the main object you will use.
 type Migrataur struct {
-	options Options
+	Options Options
 	adapter Adapter
 }
 
@@ -32,27 +32,27 @@ type Migrataur struct {
 func New(adapter Adapter, opts Options) *Migrataur {
 	return &Migrataur{
 		adapter: adapter,
-		options: opts.ExtendWith(DefaultOptions),
+		Options: opts.ExtendWith(DefaultOptions),
 	}
 }
 
 func (m *Migrataur) getMigrationFullpath(name string) string {
-	return filepath.Join(m.options.Directory,
-		fmt.Sprintf("%s_%s%s", m.options.SequenceGenerator(), name, m.options.Extension))
+	return filepath.Join(m.Options.Directory,
+		fmt.Sprintf("%s_%s%s", m.Options.SequenceGenerator(), name, m.Options.Extension))
 }
 
 // Init writes the initial migration provided by the adapter to create the needed
 // migrations table, you should call it at the start of your project.
 func (m *Migrataur) Init() (*Migration, error) {
 
-	fullPath := m.getMigrationFullpath(m.options.InitialMigrationName)
+	fullPath := m.getMigrationFullpath(m.Options.InitialMigrationName)
 	initialMigration := m.adapter.GetInitialMigration(filepath.Base(fullPath))
 
-	if err := initialMigration.WriteTo(fullPath, m.options.MarshalOptions); err != nil {
+	if err := initialMigration.WriteTo(fullPath, m.Options.MarshalOptions); err != nil {
 		return nil, err
 	}
 
-	m.options.Logger.Printf("Migrataur initialized with %s", initialMigration.Name)
+	m.Options.Logger.Printf("Migrataur initialized with %s", initialMigration.Name)
 
 	return initialMigration, nil
 }
@@ -63,18 +63,18 @@ func (m *Migrataur) NewMigration(name string) (*Migration, error) {
 	fullPath := m.getMigrationFullpath(name)
 	migration := &Migration{Name: filepath.Base(fullPath)}
 
-	if err := migration.WriteTo(fullPath, m.options.MarshalOptions); err != nil {
+	if err := migration.WriteTo(fullPath, m.Options.MarshalOptions); err != nil {
 		return nil, err
 	}
 
-	m.options.Logger.Printf("%s created", migration.Name)
+	m.Options.Logger.Printf("%s created", migration.Name)
 
 	return migration, nil
 }
 
 // getAllFromFilesystem reads all migrations in the directory and instantiates them.
 func (m *Migrataur) getAllFromFilesystem() ([]*Migration, error) {
-	files, err := ioutil.ReadDir(m.options.Directory)
+	files, err := ioutil.ReadDir(m.Options.Directory)
 
 	if err != nil {
 		return nil, err
@@ -89,13 +89,13 @@ func (m *Migrataur) getAllFromFilesystem() ([]*Migration, error) {
 
 		existingMigration := &Migration{Name: f.Name()}
 
-		data, err := ioutil.ReadFile(filepath.Join(m.options.Directory, f.Name()))
+		data, err := ioutil.ReadFile(filepath.Join(m.Options.Directory, f.Name()))
 
 		if err != nil {
 			return nil, err
 		}
 
-		if err = existingMigration.Unmarshal(data, m.options.MarshalOptions); err != nil {
+		if err = existingMigration.Unmarshal(data, m.Options.MarshalOptions); err != nil {
 			return nil, err
 		}
 
@@ -238,7 +238,7 @@ func (m *Migrataur) runStep(migration *Migration, direction dir) (bool, error) {
 	}
 
 	if shouldSkip {
-		m.options.Logger.Printf("—\t%s", migration.Name)
+		m.Options.Logger.Printf("—\t%s", migration.Name)
 
 		return false, nil
 	}
@@ -250,7 +250,7 @@ func (m *Migrataur) runStep(migration *Migration, direction dir) (bool, error) {
 	}
 
 	if err := m.adapter.Exec(command); err != nil {
-		m.options.Logger.Fatalf("✗\t%s: %s", migration.Name, err)
+		m.Options.Logger.Fatalf("✗\t%s: %s", migration.Name, err)
 		return false, err
 	}
 
@@ -258,28 +258,28 @@ func (m *Migrataur) runStep(migration *Migration, direction dir) (bool, error) {
 		now := time.Now().UTC()
 
 		if err := m.adapter.AddMigration(migration.Name, now); err != nil {
-			m.options.Logger.Fatalf("✗\t%s: %s", migration.Name, err)
+			m.Options.Logger.Fatalf("✗\t%s: %s", migration.Name, err)
 			return false, err
 		}
 
 		migration.hasBeenAppliedAt(now)
 	} else {
 		if err := m.adapter.RemoveMigration(migration.Name); err != nil {
-			m.options.Logger.Fatalf("✗\t%s: %s", migration.Name, err)
+			m.Options.Logger.Fatalf("✗\t%s: %s", migration.Name, err)
 			return false, err
 		}
 
 		migration.hasBeenRolledBack()
 	}
 
-	m.options.Logger.Printf("✓\t%s", migration.Name)
+	m.Options.Logger.Printf("✓\t%s", migration.Name)
 
 	return true, nil
 }
 
 // GetAll retrieve all migrations for the current instance. It will list applied and pending migrations
 func (m *Migrataur) GetAll() ([]*Migration, error) {
-	m.options.Logger.Print("Fetching migrations")
+	m.Options.Logger.Print("Fetching migrations")
 
 	return m.getAllMigrations(dirUp)
 }
@@ -288,14 +288,14 @@ func (m *Migrataur) GetAll() ([]*Migration, error) {
 // not contains those that were already applied.
 // rangeOrName can be the exact migration name or a range such as <migration>..<another migration name>
 func (m *Migrataur) Migrate(rangeOrName string) ([]*Migration, error) {
-	m.options.Logger.Printf("Applying %s", rangeOrName)
+	m.Options.Logger.Printf("Applying %s", rangeOrName)
 
 	return m.run(rangeOrName, dirUp)
 }
 
 // MigrateToLatest migrates the database to the latest version
 func (m *Migrataur) MigrateToLatest() ([]*Migration, error) {
-	m.options.Logger.Print("Applying all pending migrations")
+	m.Options.Logger.Print("Applying all pending migrations")
 
 	migrations, err := m.getAllMigrations(dirUp)
 
@@ -313,14 +313,14 @@ func (m *Migrataur) MigrateToLatest() ([]*Migration, error) {
 // Rollback inverts migrations and return an array of effectively rollbacked migrations
 // (it will not contains those that were not applied).
 func (m *Migrataur) Rollback(rangeOrName string) ([]*Migration, error) {
-	m.options.Logger.Printf("Rollbacking %s", rangeOrName)
+	m.Options.Logger.Printf("Rollbacking %s", rangeOrName)
 
 	return m.run(rangeOrName, dirDown)
 }
 
 // Reset resets the database to its initial state
 func (m *Migrataur) Reset() ([]*Migration, error) {
-	m.options.Logger.Print("Resetting database")
+	m.Options.Logger.Print("Resetting database")
 
 	migrations, err := m.getAllMigrations(dirDown)
 

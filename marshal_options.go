@@ -18,4 +18,5 @@ var DefaultMarshalOptions = MarshalOptions{
 	DownStart: "-- +migrataur down",
 	DownEnd:   "-- -migrataur down",
 }
+
 var emptyMarshalOptions = MarshalOptions{}
