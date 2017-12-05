@@ -12,12 +12,13 @@ import (
 	"github.com/YuukanOO/migrataur"
 )
 
-const (
-	// DefaultTableName represents the name of the migrations table
-	DefaultTableName = "__migrations"
-	// DefaultPlaceholder holds the default value for the sql placeholder
-	DefaultPlaceholder = "?"
-)
+// DefaultTableName represents the default name of the migrations table
+const DefaultTableName = "__migrations"
+
+// DefaultPlaceholder holds the default value for the sql placeholder
+// If you're on postgres, you should use ${i} where {i} will be replaced
+// by the arg position.
+const DefaultPlaceholder = "?"
 
 // Adapter implements the interface defined by migrataur for common SQL databases
 type Adapter struct {
@@ -73,6 +74,7 @@ func (a *Adapter) AddMigration(completeName string, at time.Time) error {
 }
 
 func (a *Adapter) RemoveMigration(completeName string) error {
+	// Yeah, when resetting the relation does not exist anymore :/ I should find a way
 	_, err := a.db.Exec(fmt.Sprintf("delete from %s where name = %s", a.tableName, a.getPlaceholder(1)), completeName)
 
 	return err
@@ -85,13 +87,15 @@ func (a *Adapter) Exec(command string) error {
 }
 
 func (a *Adapter) GetAll() ([]*migrataur.Migration, error) {
+	// If the database has been initialized, the migration table doesn't exist yet
+	// so fail silently for now
 	rows, err := a.db.Query(fmt.Sprintf("select name, applied_at from %s order by name", a.tableName))
 
-	if err != nil {
-		return nil, err
-	}
-
 	migrations := []*migrataur.Migration{}
+
+	if err != nil {
+		return migrations, nil
+	}
 
 	defer rows.Close()
 

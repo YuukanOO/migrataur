@@ -279,7 +279,7 @@ func (m *Migrataur) runStep(migration *Migration, direction dir) (bool, error) {
 
 // GetAll retrieve all migrations for the current instance. It will list applied and pending migrations
 func (m *Migrataur) GetAll() ([]*Migration, error) {
-	m.Options.Logger.Print("Fetching migrations")
+	m.Options.Logger.Printf("Fetching migrations in %s", m.Options.Directory)
 
 	return m.getAllMigrations(dirUp)
 }
