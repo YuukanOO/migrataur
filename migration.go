@@ -10,11 +10,11 @@ import (
 
 // Migration represents a database migration, nothing more.
 type Migration struct {
-	Name       string
-	Up         string
-	Down       string
-	AppliedAt  *time.Time
-	isFirstOne bool
+	Name      string
+	Up        string
+	Down      string
+	AppliedAt *time.Time
+	isInitial bool
 }
 
 // byName sort an array of migrations by their name, use it with sort.Sort and the like
@@ -47,14 +47,14 @@ func (m *Migration) HasBeenApplied() bool {
 	return m.AppliedAt != nil
 }
 
-func (m *Migration) markAsFirst() {
-	m.isFirstOne = true
+func (m *Migration) markAsInitial() {
+	m.isInitial = true
 }
 
-// IsFirst checks if this migration appears to be the initial one. It is primarly used
+// IsInitial checks if this migration appears to be the initial one. It is primarly used
 // in adapters when you want to perform specific checks.
-func (m *Migration) IsFirst() bool {
-	return m.isFirstOne
+func (m *Migration) IsInitial() bool {
+	return m.isInitial
 }
 
 // Marshal serializes this migration

@@ -36,11 +36,6 @@ func New(adapter Adapter, opts Options) *Migrataur {
 	}
 }
 
-func (m *Migrataur) getMigrationFullpath(name string) string {
-	return filepath.Join(m.Options.Directory,
-		fmt.Sprintf("%s_%s%s", m.Options.SequenceGenerator(), name, m.Options.Extension))
-}
-
 // Init writes the initial migration provided by the adapter to create the needed
 // migrations table, you should call it at the start of your project.
 func (m *Migrataur) Init() (*Migration, error) {
@@ -52,7 +47,7 @@ func (m *Migrataur) Init() (*Migration, error) {
 		return nil, err
 	}
 
-	m.Options.Logger.Printf("Migrataur initialized with %s", initialMigration.Name)
+	m.printf("Migrataur initialized with %s", initialMigration.Name)
 
 	return initialMigration, nil
 }
@@ -67,9 +62,79 @@ func (m *Migrataur) NewMigration(name string) (*Migration, error) {
 		return nil, err
 	}
 
-	m.Options.Logger.Printf("%s created", migration.Name)
+	m.printf("%s created", migration.Name)
 
 	return migration, nil
+}
+
+// GetAll retrieve all migrations for the current instance. It will list applied and pending migrations
+func (m *Migrataur) GetAll() ([]*Migration, error) {
+	m.printf("Fetching migrations in %s", m.Options.Directory)
+
+	return m.getAllMigrations(dirUp)
+}
+
+// Migrate migrates the database and returns an array of effectively applied migrations (it will
+// not contains those that were already applied.
+// rangeOrName can be the exact migration name or a range such as <migration>..<another migration name>
+func (m *Migrataur) Migrate(rangeOrName string) ([]*Migration, error) {
+	m.printf("Applying %s", rangeOrName)
+
+	return m.run(rangeOrName, dirUp)
+}
+
+// MigrateToLatest migrates the database to the latest version
+func (m *Migrataur) MigrateToLatest() ([]*Migration, error) {
+	m.printf("Applying all pending migrations")
+
+	migrations, err := m.getAllMigrations(dirUp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(migrations) == 0 {
+		return []*Migration{}, nil
+	}
+
+	return m.runRange(migrations[0].Name, migrations[len(migrations)-1].Name, dirUp)
+}
+
+// Rollback inverts migrations and return an array of effectively rollbacked migrations
+// (it will not contains those that were not applied).
+func (m *Migrataur) Rollback(rangeOrName string) ([]*Migration, error) {
+	m.printf("Rollbacking %s", rangeOrName)
+
+	return m.run(rangeOrName, dirDown)
+}
+
+// Reset resets the database to its initial state
+func (m *Migrataur) Reset() ([]*Migration, error) {
+	m.printf("Resetting database")
+
+	migrations, err := m.getAllMigrations(dirDown)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(migrations) == 0 {
+		return []*Migration{}, nil
+	}
+
+	return m.runRange(migrations[0].Name, migrations[len(migrations)-1].Name, dirDown)
+}
+
+func (m *Migrataur) printf(format string, args ...interface{}) {
+	if m.Options.Logger != nil {
+		m.Options.Logger.Printf(format, args...)
+	}
+}
+
+func (m *Migrataur) fatalf(format string, args ...interface{}) {
+	if m.Options.Logger != nil {
+		m.Options.Logger.Fatalf(format, args...)
+	}
 }
 
 // getAllFromFilesystem reads all migrations in the directory and instantiates them.
@@ -156,9 +221,9 @@ func (m *Migrataur) getAllMigrations(direction dir) ([]*Migration, error) {
 	if migrationsCount > 0 {
 		switch direction {
 		case dirUp:
-			fileSystemMigrations[0].markAsFirst()
+			fileSystemMigrations[0].markAsInitial()
 		case dirDown:
-			fileSystemMigrations[migrationsCount-1].markAsFirst()
+			fileSystemMigrations[migrationsCount-1].markAsInitial()
 		}
 	}
 
@@ -250,7 +315,7 @@ func (m *Migrataur) runStep(migration *Migration, direction dir) (bool, error) {
 	}
 
 	if shouldSkip {
-		m.Options.Logger.Printf("—\t%s", migration.Name)
+		m.printf("—\t%s", migration.Name)
 
 		return false, nil
 	}
@@ -262,7 +327,7 @@ func (m *Migrataur) runStep(migration *Migration, direction dir) (bool, error) {
 	}
 
 	if err := m.adapter.Exec(command); err != nil {
-		m.Options.Logger.Fatalf("✗\t%s: %s", migration.Name, err)
+		m.fatalf("✗\t%s: %s", migration.Name, err)
 		return false, err
 	}
 
@@ -270,7 +335,7 @@ func (m *Migrataur) runStep(migration *Migration, direction dir) (bool, error) {
 		migration.hasBeenAppliedAt(time.Now().UTC())
 
 		if err := m.adapter.AddMigration(migration); err != nil {
-			m.Options.Logger.Fatalf("✗\t%s: %s", migration.Name, err)
+			m.fatalf("✗\t%s: %s", migration.Name, err)
 			return false, err
 		}
 
@@ -278,70 +343,17 @@ func (m *Migrataur) runStep(migration *Migration, direction dir) (bool, error) {
 		migration.hasBeenRolledBack()
 
 		if err := m.adapter.RemoveMigration(migration); err != nil {
-			m.Options.Logger.Fatalf("✗\t%s: %s", migration.Name, err)
+			m.fatalf("✗\t%s: %s", migration.Name, err)
 			return false, err
 		}
 	}
 
-	m.Options.Logger.Printf("✓\t%s", migration.Name)
+	m.printf("✓\t%s", migration.Name)
 
 	return true, nil
 }
 
-// GetAll retrieve all migrations for the current instance. It will list applied and pending migrations
-func (m *Migrataur) GetAll() ([]*Migration, error) {
-	m.Options.Logger.Printf("Fetching migrations in %s", m.Options.Directory)
-
-	return m.getAllMigrations(dirUp)
-}
-
-// Migrate migrates the database and returns an array of effectively applied migrations (it will
-// not contains those that were already applied.
-// rangeOrName can be the exact migration name or a range such as <migration>..<another migration name>
-func (m *Migrataur) Migrate(rangeOrName string) ([]*Migration, error) {
-	m.Options.Logger.Printf("Applying %s", rangeOrName)
-
-	return m.run(rangeOrName, dirUp)
-}
-
-// MigrateToLatest migrates the database to the latest version
-func (m *Migrataur) MigrateToLatest() ([]*Migration, error) {
-	m.Options.Logger.Print("Applying all pending migrations")
-
-	migrations, err := m.getAllMigrations(dirUp)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if len(migrations) == 0 {
-		return []*Migration{}, nil
-	}
-
-	return m.runRange(migrations[0].Name, migrations[len(migrations)-1].Name, dirUp)
-}
-
-// Rollback inverts migrations and return an array of effectively rollbacked migrations
-// (it will not contains those that were not applied).
-func (m *Migrataur) Rollback(rangeOrName string) ([]*Migration, error) {
-	m.Options.Logger.Printf("Rollbacking %s", rangeOrName)
-
-	return m.run(rangeOrName, dirDown)
-}
-
-// Reset resets the database to its initial state
-func (m *Migrataur) Reset() ([]*Migration, error) {
-	m.Options.Logger.Print("Resetting database")
-
-	migrations, err := m.getAllMigrations(dirDown)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if len(migrations) == 0 {
-		return []*Migration{}, nil
-	}
-
-	return m.runRange(migrations[0].Name, migrations[len(migrations)-1].Name, dirDown)
+func (m *Migrataur) getMigrationFullpath(name string) string {
+	return filepath.Join(m.Options.Directory,
+		fmt.Sprintf("%s_%s%s", m.Options.SequenceGenerator(), name, m.Options.Extension))
 }

@@ -22,7 +22,7 @@ func TestExtendEmptyOptions(t *testing.T) {
 
 	assert(t).
 		equals(fullpath, extended.Directory).
-		equals(DefaultOptions.Logger, extended.Logger).
+		equals(nil, extended.Logger).
 		equals(DefaultOptions.Extension, extended.Extension).
 		equals(DefaultOptions.SequenceGenerator(), extended.SequenceGenerator()).
 		equals(DefaultOptions.MarshalOptions, extended.MarshalOptions).

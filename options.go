@@ -38,19 +38,16 @@ var DefaultOptions = Options{
 	Logger:               log.New(os.Stdout, "", log.LstdFlags),
 	Directory:            "./migrations",
 	Extension:            ".sql",
-	InitialMigrationName: "initMigrataur",
+	InitialMigrationName: "createMigrationHistory",
 	SequenceGenerator:    GetCurrentTimeFormatted,
 	MarshalOptions:       DefaultMarshalOptions,
 }
 
 // ExtendWith extends self with the given Options. It means that if a field is not
 // present in this option, it will be replaced by the one in the other Options.
+// This will not work for the Logger field since a user may want to not provide it.
 func (opts Options) ExtendWith(other Options) Options {
 	result := opts
-
-	if result.Logger == nil {
-		result.Logger = other.Logger
-	}
 
 	if result.Directory == "" {
 		result.Directory = other.Directory

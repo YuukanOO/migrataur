@@ -3,6 +3,7 @@ package migrataur
 import (
 	"fmt"
 	"testing"
+	"time"
 )
 
 func TestMigrationMarshaling(t *testing.T) {
@@ -55,4 +56,16 @@ func TestMigrationUnmarshaling(t *testing.T) {
 	assert(t).
 		equals(up, migration.Up).
 		equals(down, migration.Down)
+}
+
+func TestMigrationToString(t *testing.T) {
+	now := time.Now()
+	appliedMigration := &Migration{Name: "migration01.sql", AppliedAt: &now}
+	notAppliedMigration := &Migration{Name: "migration02.sql"}
+
+	assert(t).
+		true(appliedMigration.HasBeenApplied()).
+		equals(fmt.Sprintf("[✓]\t%s", appliedMigration.Name), appliedMigration.String()).
+		false(notAppliedMigration.HasBeenApplied()).
+		equals(fmt.Sprintf("[ ]\t%s", notAppliedMigration.Name), notAppliedMigration.String())
 }

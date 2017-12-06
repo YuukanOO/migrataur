@@ -16,7 +16,7 @@ func For(instance *migrataur.Migrataur) *cli.App {
 				migrations, err := instance.GetAll()
 
 				if err != nil {
-					return err
+					return cli.NewExitError(err, 1)
 				}
 
 				for _, m := range migrations {
@@ -32,7 +32,11 @@ func For(instance *migrataur.Migrataur) *cli.App {
 			Action: func(c *cli.Context) error {
 				_, err := instance.Init()
 
-				return err
+				if err != nil {
+					return cli.NewExitError(err, 1)
+				}
+
+				return nil
 			},
 		},
 		{
@@ -42,7 +46,11 @@ func For(instance *migrataur.Migrataur) *cli.App {
 			Action: func(c *cli.Context) error {
 				_, err := instance.NewMigration(c.Args().First())
 
-				return err
+				if err != nil {
+					return cli.NewExitError(err, 1)
+				}
+
+				return nil
 			},
 		},
 		{
@@ -51,7 +59,11 @@ func For(instance *migrataur.Migrataur) *cli.App {
 			Action: func(c *cli.Context) error {
 				_, err := instance.Reset()
 
-				return err
+				if err != nil {
+					return cli.NewExitError(err, 1)
+				}
+
+				return nil
 			},
 		},
 		{
@@ -67,7 +79,11 @@ func For(instance *migrataur.Migrataur) *cli.App {
 					_, err = instance.Migrate(nameOrRange)
 				}
 
-				return err
+				if err != nil {
+					return cli.NewExitError(err, 1)
+				}
+
+				return nil
 			},
 		},
 		{
@@ -76,7 +92,11 @@ func For(instance *migrataur.Migrataur) *cli.App {
 			Action: func(c *cli.Context) error {
 				_, err := instance.Rollback(c.Args().First())
 
-				return err
+				if err != nil {
+					return cli.NewExitError(err, 1)
+				}
+
+				return nil
 			},
 		},
 	}

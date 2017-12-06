@@ -3,7 +3,6 @@ package migrataur
 import (
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"testing"
 )
@@ -51,7 +50,7 @@ func TestMigrataurInit(t *testing.T) {
 		notNil(migration).
 		nil(err).
 		contains(DefaultOptions.InitialMigrationName, migration.Name).
-		equals(false, migration.HasBeenApplied())
+		false(migration.HasBeenApplied())
 }
 
 func TestMigrataurNew(t *testing.T) {
@@ -82,7 +81,7 @@ func TestMigrataurMigrateToLatest(t *testing.T) {
 	assert(t).
 		nil(err).
 		equals(4, len(applied)).
-		equals(true, applied[0].IsFirst()).
+		true(applied[0].IsInitial()).
 		migrationsEquals(applied, "migration01", "migration02", "migration03", "migration04")
 }
 
@@ -216,11 +215,13 @@ func TestMigrataurReset(t *testing.T) {
 	assert.
 		nil(err).
 		equals(4, len(applied)).
-		equals(true, applied[3].IsFirst()).
+		true(applied[3].IsInitial()).
 		migrationsEquals(applied, "migration04", "migration03", "migration02", "migration01")
 }
 
 func TestMigrationsSorting(t *testing.T) {
+	assert := assert(t)
+
 	migrations := []*Migration{
 		&Migration{Name: "migration03"},
 		&Migration{Name: "migration04"},
@@ -228,28 +229,21 @@ func TestMigrationsSorting(t *testing.T) {
 		&Migration{Name: "migration01"},
 	}
 
-	expected := []string{
-		"migration01",
-		"migration02",
-		"migration03",
-		"migration04",
-	}
-
 	sortMigrations(migrations, dirUp)
 
-	for i := 0; i < len(expected); i++ {
-		if migrations[i].Name != expected[i] {
-			t.Errorf("Expecting %s, got %s when sorted", expected[i], migrations[i].Name)
-		}
-	}
-
-	sort.Sort(sort.Reverse(sort.StringSlice(expected)))
+	assert.migrationsEquals(migrations, "migration01", "migration02", "migration03", "migration04")
 
 	sortMigrations(migrations, dirDown)
 
-	for i := 0; i < len(expected); i++ {
-		if migrations[i].Name != expected[i] {
-			t.Errorf("Expecting %s, got %s when sorted", expected[i], migrations[i].Name)
-		}
-	}
+	assert.migrationsEquals(migrations, "migration04", "migration03", "migration02", "migration01")
+}
+
+func TestWithLoggerNil(t *testing.T) {
+	instance := New(&mockAdapter{}, Options{
+		Logger: nil,
+	})
+
+	instance.GetAll()
+
+	assert(t).nil(instance.Options.Logger)
 }

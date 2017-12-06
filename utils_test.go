@@ -23,6 +23,22 @@ func (a *assertInstance) contains(pattern, actual string) *assertInstance {
 	return a
 }
 
+func (a *assertInstance) true(actual bool) *assertInstance {
+	if actual == false {
+		a.t.Errorf("Expected to be true! Got: %t", actual)
+	}
+
+	return a
+}
+
+func (a *assertInstance) false(actual bool) *assertInstance {
+	if actual == true {
+		a.t.Errorf("Expected to be false! Got: %t", actual)
+	}
+
+	return a
+}
+
 func (a *assertInstance) equals(expected, actual interface{}) *assertInstance {
 	if actual != expected {
 		a.t.Errorf("Expected: %s, Got: %s", expected, actual)

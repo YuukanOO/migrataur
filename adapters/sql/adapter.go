@@ -71,7 +71,7 @@ func (a *Adapter) AddMigration(migration *migrataur.Migration) error {
 }
 
 func (a *Adapter) RemoveMigration(migration *migrataur.Migration) error {
-	if migration.IsFirst() {
+	if migration.IsInitial() {
 		return nil
 	}
 
