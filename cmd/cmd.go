@@ -10,8 +10,8 @@ func For(instance *migrataur.Migrataur) *cli.App {
 	app := cli.NewApp()
 	app.Commands = []cli.Command{
 		{
-			Name:        "list",
-			Description: "List all migrations",
+			Name:  "list",
+			Usage: "List all migrations",
 			Action: func(c *cli.Context) error {
 				migrations, err := instance.GetAll()
 
@@ -20,15 +20,15 @@ func For(instance *migrataur.Migrataur) *cli.App {
 				}
 
 				for _, m := range migrations {
-					instance.Options.Logger.Print(m)
+					instance.Printf(m.String())
 				}
 
 				return nil
 			},
 		},
 		{
-			Name:        "init",
-			Description: "Generates the initial migration provided by the adapter",
+			Name:  "init",
+			Usage: "Generates the initial migration provided by the adapter",
 			Action: func(c *cli.Context) error {
 				_, err := instance.Init()
 
@@ -40,11 +40,16 @@ func For(instance *migrataur.Migrataur) *cli.App {
 			},
 		},
 		{
-			Name:        "new",
-			Usage:       "new <migration name>",
-			Description: "Creates a new migration",
+			Name:  "new",
+			Usage: "Creates a new migration with the given name",
 			Action: func(c *cli.Context) error {
-				_, err := instance.NewMigration(c.Args().First())
+				name := c.Args().First()
+
+				if name == "" {
+					return cli.NewExitError("You should provide a name!", 1)
+				}
+
+				_, err := instance.NewMigration(name)
 
 				if err != nil {
 					return cli.NewExitError(err, 1)
@@ -54,8 +59,8 @@ func For(instance *migrataur.Migrataur) *cli.App {
 			},
 		},
 		{
-			Name:        "reset",
-			Description: "Reset the database",
+			Name:  "reset",
+			Usage: "Reset the database",
 			Action: func(c *cli.Context) error {
 				_, err := instance.Reset()
 
@@ -67,8 +72,8 @@ func For(instance *migrataur.Migrataur) *cli.App {
 			},
 		},
 		{
-			Name:        "migrate",
-			Description: "Migrates given range or migration",
+			Name:  "migrate",
+			Usage: "Migrates given range or migration. If you do not provide a range, it will apply all pending migrations.",
 			Action: func(c *cli.Context) error {
 				var err error
 				nameOrRange := c.Args().First()
@@ -87,10 +92,16 @@ func For(instance *migrataur.Migrataur) *cli.App {
 			},
 		},
 		{
-			Name:        "rollback",
-			Description: "Rollbacks given range or migration",
+			Name:  "rollback",
+			Usage: "Rollbacks given range or migration",
 			Action: func(c *cli.Context) error {
-				_, err := instance.Rollback(c.Args().First())
+				nameOrRange := c.Args().First()
+
+				if nameOrRange == "" {
+					return cli.NewExitError("You should provide a name or range to rollback!", 1)
+				}
+
+				_, err := instance.Rollback(nameOrRange)
 
 				if err != nil {
 					return cli.NewExitError(err, 1)

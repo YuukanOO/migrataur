@@ -54,10 +54,12 @@ func (a *Adapter) getPlaceholder(idx int) string {
 }
 
 func (a *Adapter) GetInitialMigration() (up, down string) {
-	return fmt.Sprintf(`create table %s(
+	return fmt.Sprintf(`-- Do not edit this migration unless you know what you're doing!
+create table %s(
 	name varchar(250) primary key,
 	applied_at timestamp not null
-);`, a.tableName), fmt.Sprintf("drop table %s;", a.tableName)
+);`, a.tableName), fmt.Sprintf(`-- Warning also apply to this section ;)
+drop table %s;`, a.tableName)
 }
 
 func (a *Adapter) MigrationApplied(migration *migrataur.Migration) error {

@@ -40,7 +40,7 @@ func New(adapter Adapter, opts Options) *Migrataur {
 // Init writes the initial migration provided by the adapter to create the needed
 // migrations table, you should call it at the start of your project.
 func (m *Migrataur) Init() (*Migration, error) {
-	m.printf("Initializing migrataur")
+	m.Printf("Initializing migrataur")
 
 	fullPath := m.getMigrationFullpath(m.Options.InitialMigrationName)
 	up, down := m.adapter.GetInitialMigration()
@@ -55,7 +55,7 @@ func (m *Migrataur) Init() (*Migration, error) {
 		return nil, err
 	}
 
-	m.printf("\tInitialized with %s!", initialMigration.Name)
+	m.Printf("\t%s created!", initialMigration.Name)
 
 	return initialMigration, nil
 }
@@ -63,7 +63,7 @@ func (m *Migrataur) Init() (*Migration, error) {
 // NewMigration creates a new migration in the configured folder and returns the instance of the migration
 // attached to the newly created file
 func (m *Migrataur) NewMigration(name string) (*Migration, error) {
-	m.printf("Creating %s", name)
+	m.Printf("Creating %s", name)
 
 	fullPath := m.getMigrationFullpath(name)
 	migration := &Migration{Name: filepath.Base(fullPath)}
@@ -72,14 +72,14 @@ func (m *Migrataur) NewMigration(name string) (*Migration, error) {
 		return nil, err
 	}
 
-	m.printf("\t%s created!", migration.Name)
+	m.Printf("\t%s created!", migration.Name)
 
 	return migration, nil
 }
 
 // GetAll retrieve all migrations for the current instance. It will list applied and pending migrations
 func (m *Migrataur) GetAll() ([]*Migration, error) {
-	m.printf("Fetching migrations in %s", m.Options.Directory)
+	m.Printf("Fetching migrations in %s", m.Options.Directory)
 
 	return m.getAllMigrations(dirUp)
 }
@@ -88,14 +88,14 @@ func (m *Migrataur) GetAll() ([]*Migration, error) {
 // not contains those that were already applied.
 // rangeOrName can be the exact migration name or a range such as <migration>..<another migration name>
 func (m *Migrataur) Migrate(rangeOrName string) ([]*Migration, error) {
-	m.printf("Applying %s", rangeOrName)
+	m.Printf("Applying %s", rangeOrName)
 
 	return m.run(rangeOrName, dirUp)
 }
 
 // MigrateToLatest migrates the database to the latest version
 func (m *Migrataur) MigrateToLatest() ([]*Migration, error) {
-	m.printf("Applying all pending migrations")
+	m.Printf("Applying all pending migrations")
 
 	migrations, err := m.getAllMigrations(dirUp)
 
@@ -113,14 +113,14 @@ func (m *Migrataur) MigrateToLatest() ([]*Migration, error) {
 // Rollback inverts migrations and return an array of effectively rollbacked migrations
 // (it will not contains those that were not applied).
 func (m *Migrataur) Rollback(rangeOrName string) ([]*Migration, error) {
-	m.printf("Rollbacking %s", rangeOrName)
+	m.Printf("Rollbacking %s", rangeOrName)
 
 	return m.run(rangeOrName, dirDown)
 }
 
 // Reset resets the database to its initial state
 func (m *Migrataur) Reset() ([]*Migration, error) {
-	m.printf("Resetting database")
+	m.Printf("Resetting database")
 
 	migrations, err := m.getAllMigrations(dirDown)
 
@@ -135,13 +135,15 @@ func (m *Migrataur) Reset() ([]*Migration, error) {
 	return m.runRange(migrations[0].Name, migrations[len(migrations)-1].Name, dirDown)
 }
 
-func (m *Migrataur) printf(format string, args ...interface{}) {
+// Printf logs a message using the provided Logger if any
+func (m *Migrataur) Printf(format string, args ...interface{}) {
 	if m.Options.Logger != nil {
 		m.Options.Logger.Printf(format, args...)
 	}
 }
 
-func (m *Migrataur) fatalf(format string, args ...interface{}) {
+// Fatalf logs a fatal message using the provided Logger if any
+func (m *Migrataur) Fatalf(format string, args ...interface{}) {
 	if m.Options.Logger != nil {
 		m.Options.Logger.Fatalf(format, args...)
 	}
@@ -312,7 +314,7 @@ func (m *Migrataur) runRange(start, end string, direction dir) ([]*Migration, er
 	}
 
 	if len(appliedMigrations) == 0 {
-		m.printf("\tAll clear, nothing done!")
+		m.Printf("\tAll clear, nothing done!")
 	}
 
 	return appliedMigrations, nil
@@ -340,7 +342,7 @@ func (m *Migrataur) runStep(migration *Migration, direction dir) (bool, error) {
 	}
 
 	if err := m.adapter.Exec(command); err != nil {
-		m.fatalf("✗\t%s: %s", migration.Name, err)
+		m.Fatalf("✗\t%s: %s", migration.Name, err)
 		return false, err
 	}
 
@@ -348,7 +350,7 @@ func (m *Migrataur) runStep(migration *Migration, direction dir) (bool, error) {
 		migration.hasBeenAppliedAt(time.Now().UTC())
 
 		if err := m.adapter.MigrationApplied(migration); err != nil {
-			m.fatalf("✗\t%s: %s", migration.Name, err)
+			m.Fatalf("✗\t%s: %s", migration.Name, err)
 			return false, err
 		}
 
@@ -356,12 +358,12 @@ func (m *Migrataur) runStep(migration *Migration, direction dir) (bool, error) {
 		migration.hasBeenRolledBack()
 
 		if err := m.adapter.MigrationRollbacked(migration); err != nil {
-			m.fatalf("✗\t%s: %s", migration.Name, err)
+			m.Fatalf("✗\t%s: %s", migration.Name, err)
 			return false, err
 		}
 	}
 
-	m.printf("✓\t%s", migration.Name)
+	m.Printf("✓\t%s", migration.Name)
 
 	return true, nil
 }
