@@ -90,24 +90,14 @@ func (m *Migrataur) GetAll() ([]*Migration, error) {
 func (m *Migrataur) Migrate(rangeOrName string) ([]*Migration, error) {
 	m.Printf("Applying %s", rangeOrName)
 
-	return m.run(rangeOrName, dirUp)
+	return m.applyRange(rangeOrName, dirUp)
 }
 
 // MigrateToLatest migrates the database to the latest version
 func (m *Migrataur) MigrateToLatest() ([]*Migration, error) {
 	m.Printf("Applying all pending migrations")
 
-	migrations, err := m.getAllMigrations(dirUp)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if len(migrations) == 0 {
-		return []*Migration{}, nil
-	}
-
-	return m.runRange(migrations[0].Name, migrations[len(migrations)-1].Name, dirUp)
+	return m.applyAll(dirUp)
 }
 
 // Rollback inverts migrations and return an array of effectively rollbacked migrations
@@ -115,24 +105,14 @@ func (m *Migrataur) MigrateToLatest() ([]*Migration, error) {
 func (m *Migrataur) Rollback(rangeOrName string) ([]*Migration, error) {
 	m.Printf("Rollbacking %s", rangeOrName)
 
-	return m.run(rangeOrName, dirDown)
+	return m.applyRange(rangeOrName, dirDown)
 }
 
 // Reset resets the database to its initial state
 func (m *Migrataur) Reset() ([]*Migration, error) {
 	m.Printf("Resetting database")
 
-	migrations, err := m.getAllMigrations(dirDown)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if len(migrations) == 0 {
-		return []*Migration{}, nil
-	}
-
-	return m.runRange(migrations[0].Name, migrations[len(migrations)-1].Name, dirDown)
+	return m.applyAll(dirDown)
 }
 
 // Printf logs a message using the provided Logger if any
@@ -149,6 +129,27 @@ func (m *Migrataur) Fatalf(format string, args ...interface{}) {
 	}
 }
 
+func (m *Migrataur) applyAll(direction dir) ([]*Migration, error) {
+	migrations, err := m.getAllMigrations(direction)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return m.apply(migrations, direction)
+}
+
+func (m *Migrataur) applyRange(rangeOrName string, direction dir) ([]*Migration, error) {
+	start, end := getMigrationRange(rangeOrName)
+	migrations, err := m.getAllMigrationsForRange(start, end, direction)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return m.apply(migrations, direction)
+}
+
 // getAllFromFilesystem reads all migrations in the directory and instantiates them.
 func (m *Migrataur) getAllFromFilesystem() ([]*Migration, error) {
 	migrations := []*Migration{}
@@ -162,7 +163,6 @@ func (m *Migrataur) getAllFromFilesystem() ([]*Migration, error) {
 		}
 
 		// If it's an "open" error, maybe that's because the directory does not exists yet
-
 		return migrations, nil
 	}
 
@@ -198,6 +198,69 @@ func sortMigrations(migrations []*Migration, direction dir) {
 	}
 }
 
+// apply given migrations in the given direction
+func (m *Migrataur) apply(migrations []*Migration, direction dir) ([]*Migration, error) {
+	appliedMigrations := []*Migration{}
+
+	for _, mig := range migrations {
+		ok, err := m.applyOne(mig, direction)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if ok {
+			appliedMigrations = append(appliedMigrations, mig)
+		}
+	}
+
+	if len(appliedMigrations) == 0 {
+		m.Printf("\tAll clear, nothing done!")
+	}
+
+	return appliedMigrations, nil
+}
+
+// getAllMigrationsForRange retrieves all migrations concerned by a range
+func (m *Migrataur) getAllMigrationsForRange(start, end string, direction dir) ([]*Migration, error) {
+	migrations, err := m.getAllMigrations(direction)
+
+	if err != nil {
+		return nil, err
+	}
+
+	rangeMigrations := []*Migration{}
+
+	if start == "" {
+		return rangeMigrations, nil
+	}
+
+	startApplied := false
+
+	for _, mig := range migrations {
+		if !startApplied {
+			if strings.Contains(mig.Name, start) {
+				startApplied = true
+				rangeMigrations = append(rangeMigrations, mig)
+
+				// Break early if no end migration has been set or if the end is the same
+				if end == "" || start == end {
+					break
+				}
+			}
+		} else {
+			rangeMigrations = append(rangeMigrations, mig)
+
+			// If we reach the end, break
+			if strings.Contains(mig.Name, end) {
+				break
+			}
+		}
+	}
+
+	return rangeMigrations, nil
+}
+
 // getAllMigrations retrieves all migrations from the filesystem, and from the
 // configurated adapter. It will mark them as applied if they are present in the
 // adapter.
@@ -209,7 +272,6 @@ func (m *Migrataur) getAllMigrations(direction dir) ([]*Migration, error) {
 		return nil, err
 	}
 
-	migrationsCount := len(fileSystemMigrations)
 	adapterMigrations, err := m.adapter.GetAll()
 
 	if err != nil {
@@ -218,6 +280,7 @@ func (m *Migrataur) getAllMigrations(direction dir) ([]*Migration, error) {
 
 	// Constructs the migrations map to easily update them with adapter ones
 	migrationsMap := map[string]*Migration{}
+	migrationsCount := len(fileSystemMigrations)
 
 	for _, m := range fileSystemMigrations {
 		migrationsMap[m.Name] = m
@@ -259,76 +322,9 @@ func getMigrationRange(rangeStr string) (first, last string) {
 	return splitted[0], splitted[1]
 }
 
-func (m *Migrataur) runRange(start, end string, direction dir) ([]*Migration, error) {
-	appliedMigrations := []*Migration{}
-
-	if start == "" {
-		return appliedMigrations, nil
-	}
-
-	startApplied := false
-
-	migrations, err := m.getAllMigrations(direction)
-
-	if err != nil {
-		return nil, err
-	}
-
-	for _, migration := range migrations {
-		if !startApplied {
-			if strings.Contains(migration.Name, start) {
-
-				ok, err := m.runStep(migration, direction)
-
-				if err != nil {
-					return nil, err
-				}
-
-				if ok {
-					appliedMigrations = append(appliedMigrations, migration)
-				}
-
-				startApplied = true
-
-				// Break early if no end migration has been set or if the end is the same
-				if end == "" || start == end {
-					break
-				}
-			}
-		} else {
-			ok, err := m.runStep(migration, direction)
-
-			if err != nil {
-				return nil, err
-			}
-
-			if ok {
-				appliedMigrations = append(appliedMigrations, migration)
-			}
-
-			// If we reach the end, break
-			if strings.Contains(migration.Name, end) {
-				break
-			}
-		}
-	}
-
-	if len(appliedMigrations) == 0 {
-		m.Printf("\tAll clear, nothing done!")
-	}
-
-	return appliedMigrations, nil
-}
-
-func (m *Migrataur) run(rangeOrName string, direction dir) ([]*Migration, error) {
-	start, end := getMigrationRange(rangeOrName)
-
-	return m.runRange(start, end, direction)
-}
-
-// runStep runs a single migration and returns if it has been applied. If the migration
+// applyOne runs a single migration and returns if it has been applied. If the migration
 // did not run because that was not needed, it will returns false.
-func (m *Migrataur) runStep(migration *Migration, direction dir) (bool, error) {
+func (m *Migrataur) applyOne(migration *Migration, direction dir) (bool, error) {
 
 	// Do not execute commands if already applied or not applied at all when rolling back
 	if (migration.HasBeenApplied() && direction == dirUp) || (!migration.HasBeenApplied() && direction == dirDown) {

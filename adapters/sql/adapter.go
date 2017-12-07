@@ -101,7 +101,7 @@ func (a *Adapter) GetAll() ([]*migrataur.Migration, error) {
 		var migration = &migrataur.Migration{}
 
 		if err = rows.Scan(&migration.Name, &migration.AppliedAt); err != nil {
-			panic(err)
+			return nil, err
 		}
 
 		migrations = append(migrations, migration)

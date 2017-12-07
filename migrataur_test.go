@@ -39,6 +39,47 @@ func TestGetRangeStr(t *testing.T) {
 		equals("migration07", last)
 }
 
+func TestGetAllMigrationsForRange(t *testing.T) {
+	cleanUpMigrationsDir()
+
+	assert := assert(t)
+	instance := New(&mockAdapter{}, DefaultOptions)
+
+	instance.NewMigration("migration01")
+	instance.NewMigration("migration02")
+	instance.NewMigration("migration03")
+	instance.NewMigration("migration04")
+	instance.NewMigration("migration05")
+
+	migrations, err := instance.getAllMigrationsForRange("migration01", "", dirUp)
+
+	assert.
+		nil(err).
+		equals(1, len(migrations)).
+		migrationsEquals(migrations, "migration01")
+
+	migrations, err = instance.getAllMigrationsForRange("migration03", "migration05", dirUp)
+
+	assert.
+		nil(err).
+		equals(3, len(migrations)).
+		migrationsEquals(migrations, "migration03", "migration04", "migration05")
+
+	migrations, err = instance.getAllMigrationsForRange("migration05", "", dirDown)
+
+	assert.
+		nil(err).
+		equals(1, len(migrations)).
+		migrationsEquals(migrations, "migration05")
+
+	migrations, err = instance.getAllMigrationsForRange("migration05", "migration02", dirDown)
+
+	assert.
+		nil(err).
+		equals(4, len(migrations)).
+		migrationsEquals(migrations, "migration05", "migration04", "migration03", "migration02")
+}
+
 func TestMigrataurInit(t *testing.T) {
 	cleanUpMigrationsDir()
 
@@ -259,7 +300,7 @@ func TestMigrationsSorting(t *testing.T) {
 	assert.migrationsEquals(migrations, "migration04", "migration03", "migration02", "migration01")
 }
 
-func TestWithLoggerNil(t *testing.T) {
+func TestWithLoggerNilShouldNotPanic(t *testing.T) {
 	instance := New(&mockAdapter{}, Options{
 		Logger: nil,
 	})
