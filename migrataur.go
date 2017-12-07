@@ -5,6 +5,7 @@ package migrataur
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -39,15 +40,22 @@ func New(adapter Adapter, opts Options) *Migrataur {
 // Init writes the initial migration provided by the adapter to create the needed
 // migrations table, you should call it at the start of your project.
 func (m *Migrataur) Init() (*Migration, error) {
+	m.printf("Initializing migrataur")
 
 	fullPath := m.getMigrationFullpath(m.Options.InitialMigrationName)
-	initialMigration := m.adapter.GetInitialMigration(filepath.Base(fullPath))
+	up, down := m.adapter.GetInitialMigration()
 
-	if err := initialMigration.WriteTo(fullPath, m.Options.MarshalOptions); err != nil {
+	initialMigration := &Migration{
+		Name: filepath.Base(fullPath),
+		up:   up,
+		down: down,
+	}
+
+	if err := initialMigration.writeTo(fullPath, m.Options.MarshalOptions); err != nil {
 		return nil, err
 	}
 
-	m.printf("Migrataur initialized with %s", initialMigration.Name)
+	m.printf("\tInitialized with %s!", initialMigration.Name)
 
 	return initialMigration, nil
 }
@@ -55,14 +63,16 @@ func (m *Migrataur) Init() (*Migration, error) {
 // NewMigration creates a new migration in the configured folder and returns the instance of the migration
 // attached to the newly created file
 func (m *Migrataur) NewMigration(name string) (*Migration, error) {
+	m.printf("Creating %s", name)
+
 	fullPath := m.getMigrationFullpath(name)
 	migration := &Migration{Name: filepath.Base(fullPath)}
 
-	if err := migration.WriteTo(fullPath, m.Options.MarshalOptions); err != nil {
+	if err := migration.writeTo(fullPath, m.Options.MarshalOptions); err != nil {
 		return nil, err
 	}
 
-	m.printf("%s created", migration.Name)
+	m.printf("\t%s created!", migration.Name)
 
 	return migration, nil
 }
@@ -139,13 +149,20 @@ func (m *Migrataur) fatalf(format string, args ...interface{}) {
 
 // getAllFromFilesystem reads all migrations in the directory and instantiates them.
 func (m *Migrataur) getAllFromFilesystem() ([]*Migration, error) {
+	migrations := []*Migration{}
 	files, err := ioutil.ReadDir(m.Options.Directory)
 
 	if err != nil {
-		return nil, err
-	}
+		pathErr, ok := err.(*os.PathError)
 
-	migrations := []*Migration{}
+		if !ok || pathErr.Op != "open" {
+			return nil, err
+		}
+
+		// If it's an "open" error, maybe that's because the directory does not exists yet
+
+		return migrations, nil
+	}
 
 	for _, f := range files {
 		if f.IsDir() {
@@ -160,7 +177,7 @@ func (m *Migrataur) getAllFromFilesystem() ([]*Migration, error) {
 			return nil, err
 		}
 
-		if err = existingMigration.Unmarshal(data, m.Options.MarshalOptions); err != nil {
+		if err = existingMigration.unmarshal(data, m.Options.MarshalOptions); err != nil {
 			return nil, err
 		}
 
@@ -294,6 +311,10 @@ func (m *Migrataur) runRange(start, end string, direction dir) ([]*Migration, er
 		}
 	}
 
+	if len(appliedMigrations) == 0 {
+		m.printf("\tAll clear, nothing done!")
+	}
+
 	return appliedMigrations, nil
 }
 
@@ -307,23 +328,15 @@ func (m *Migrataur) run(rangeOrName string, direction dir) ([]*Migration, error)
 // did not run because that was not needed, it will returns false.
 func (m *Migrataur) runStep(migration *Migration, direction dir) (bool, error) {
 
-	shouldSkip := false
-
 	// Do not execute commands if already applied or not applied at all when rolling back
 	if (migration.HasBeenApplied() && direction == dirUp) || (!migration.HasBeenApplied() && direction == dirDown) {
-		shouldSkip = true
-	}
-
-	if shouldSkip {
-		m.printf("—\t%s", migration.Name)
-
 		return false, nil
 	}
 
-	command := migration.Up
+	command := migration.up
 
 	if direction == dirDown {
-		command = migration.Down
+		command = migration.down
 	}
 
 	if err := m.adapter.Exec(command); err != nil {
@@ -334,7 +347,7 @@ func (m *Migrataur) runStep(migration *Migration, direction dir) (bool, error) {
 	if direction == dirUp {
 		migration.hasBeenAppliedAt(time.Now().UTC())
 
-		if err := m.adapter.AddMigration(migration); err != nil {
+		if err := m.adapter.MigrationApplied(migration); err != nil {
 			m.fatalf("✗\t%s: %s", migration.Name, err)
 			return false, err
 		}
@@ -342,7 +355,7 @@ func (m *Migrataur) runStep(migration *Migration, direction dir) (bool, error) {
 	} else {
 		migration.hasBeenRolledBack()
 
-		if err := m.adapter.RemoveMigration(migration); err != nil {
+		if err := m.adapter.MigrationRollbacked(migration); err != nil {
 			m.fatalf("✗\t%s: %s", migration.Name, err)
 			return false, err
 		}

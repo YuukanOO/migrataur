@@ -53,24 +53,20 @@ func (a *Adapter) getPlaceholder(idx int) string {
 	return strings.Replace(a.placeholder, "{i}", strconv.Itoa(idx), -1)
 }
 
-func (a *Adapter) GetInitialMigration(name string) *migrataur.Migration {
-	return &migrataur.Migration{
-		Name: name,
-		Up: fmt.Sprintf(`create table %s(
+func (a *Adapter) GetInitialMigration() (up, down string) {
+	return fmt.Sprintf(`create table %s(
 	name varchar(250) primary key,
 	applied_at timestamp not null
-);`, a.tableName),
-		Down: fmt.Sprintf("drop table %s;", a.tableName),
-	}
+);`, a.tableName), fmt.Sprintf("drop table %s;", a.tableName)
 }
 
-func (a *Adapter) AddMigration(migration *migrataur.Migration) error {
+func (a *Adapter) MigrationApplied(migration *migrataur.Migration) error {
 	_, err := a.db.Exec(fmt.Sprintf("insert into %s values (%s, %s)", a.tableName, a.getPlaceholder(1), a.getPlaceholder(2)), migration.Name, *migration.AppliedAt)
 
 	return err
 }
 
-func (a *Adapter) RemoveMigration(migration *migrataur.Migration) error {
+func (a *Adapter) MigrationRollbacked(migration *migrataur.Migration) error {
 	if migration.IsInitial() {
 		return nil
 	}
@@ -87,7 +83,7 @@ func (a *Adapter) Exec(command string) error {
 }
 
 func (a *Adapter) GetAll() ([]*migrataur.Migration, error) {
-	// If the database has been initialized, the migration table doesn't exist yet
+	// If the database has not been initialized, the migration table doesn't exist yet
 	// so fail silently for now
 	rows, err := a.db.Query(fmt.Sprintf("select name, applied_at from %s order by name", a.tableName))
 

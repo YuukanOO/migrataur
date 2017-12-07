@@ -11,8 +11,8 @@ import (
 // Migration represents a database migration, nothing more.
 type Migration struct {
 	Name      string
-	Up        string
-	Down      string
+	up        string
+	down      string
 	AppliedAt *time.Time
 	isInitial bool
 }
@@ -42,11 +42,12 @@ func (m *Migration) hasBeenRolledBack() {
 	m.AppliedAt = nil
 }
 
-// HasBeenApplied checks if the migration has already been applied in the database
+// HasBeenApplied checks if the migration has already been applied in the database.
 func (m *Migration) HasBeenApplied() bool {
 	return m.AppliedAt != nil
 }
 
+// markAsInitial marks this migration as the initial one. This is useful in adapters.
 func (m *Migration) markAsInitial() {
 	m.isInitial = true
 }
@@ -57,8 +58,8 @@ func (m *Migration) IsInitial() bool {
 	return m.isInitial
 }
 
-// Marshal serializes this migration
-func (m *Migration) Marshal(options MarshalOptions) (text []byte, err error) {
+// marshal serializes this migration
+func (m *Migration) marshal(options MarshalOptions) (text []byte, err error) {
 	content := fmt.Sprintf(`%s
 %s
 %s
@@ -66,13 +67,13 @@ func (m *Migration) Marshal(options MarshalOptions) (text []byte, err error) {
 
 %s
 %s
-%s`, options.UpStart, m.Up, options.UpEnd, options.DownStart, m.Down, options.DownEnd)
+%s`, options.UpStart, m.up, options.UpEnd, options.DownStart, m.down, options.DownEnd)
 
 	return []byte(content), nil
 }
 
-// Unmarshal deserializes a migration
-func (m *Migration) Unmarshal(text []byte, options MarshalOptions) error {
+// unmarshal deserializes a migration
+func (m *Migration) unmarshal(text []byte, options MarshalOptions) error {
 	lines := strings.Split(string(text), "\n")
 
 	upFrom, downFrom := 0, 0
@@ -82,19 +83,19 @@ func (m *Migration) Unmarshal(text []byte, options MarshalOptions) error {
 		case options.UpStart:
 			upFrom = i
 		case options.UpEnd:
-			m.Up = strings.Join(lines[upFrom+1:i], "\n")
+			m.up = strings.Join(lines[upFrom+1:i], "\n")
 		case options.DownStart:
 			downFrom = i
 		case options.DownEnd:
-			m.Down = strings.Join(lines[downFrom+1:i], "\n")
+			m.down = strings.Join(lines[downFrom+1:i], "\n")
 		}
 	}
 
 	return nil
 }
 
-// WriteTo writes this migration to the filesystem
-func (m *Migration) WriteTo(path string, options MarshalOptions) error {
+// writeTo writes this migration to the filesystem using given MarshalOptions.
+func (m *Migration) writeTo(path string, options MarshalOptions) error {
 
 	// Make sure the directory exists
 	if err := os.MkdirAll(filepath.Dir(path), os.ModeDir); err != nil {
@@ -109,7 +110,7 @@ func (m *Migration) WriteTo(path string, options MarshalOptions) error {
 
 	defer file.Close()
 
-	data, err := m.Marshal(options)
+	data, err := m.marshal(options)
 
 	if err != nil {
 		return err

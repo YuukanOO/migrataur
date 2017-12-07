@@ -11,12 +11,12 @@ func TestMigrationMarshaling(t *testing.T) {
 
 	migration := Migration{
 		Name: "migration01",
-		Up:   "create table horses (name varchar(50) primary key);",
-		Down: "drop table horses;",
+		up:   "create table horses (name varchar(50) primary key);",
+		down: "drop table horses;",
 	}
 	opts := DefaultMarshalOptions
 
-	data, err := migration.Marshal(opts)
+	data, err := migration.marshal(opts)
 
 	assert.nil(err)
 
@@ -28,8 +28,8 @@ func TestMigrationMarshaling(t *testing.T) {
 
 %s
 %s
-%s`, opts.UpStart, migration.Up, opts.UpEnd,
-		opts.DownStart, migration.Down, opts.DownEnd)
+%s`, opts.UpStart, migration.up, opts.UpEnd,
+		opts.DownStart, migration.down, opts.DownEnd)
 
 	assert.equals(expected, content)
 }
@@ -40,22 +40,22 @@ func TestMigrationUnmarshaling(t *testing.T) {
 
 	migration := Migration{
 		Name: "migration02",
-		Up:   up,
-		Down: down,
+		up:   up,
+		down: down,
 	}
 
-	data, _ := migration.Marshal(DefaultMarshalOptions)
+	data, _ := migration.marshal(DefaultMarshalOptions)
 
-	migration.Up = ""
-	migration.Down = ""
+	migration.up = ""
+	migration.down = ""
 
-	if err := migration.Unmarshal(data, DefaultMarshalOptions); err != nil {
+	if err := migration.unmarshal(data, DefaultMarshalOptions); err != nil {
 		t.Error(err)
 	}
 
 	assert(t).
-		equals(up, migration.Up).
-		equals(down, migration.Down)
+		equals(up, migration.up).
+		equals(down, migration.down)
 }
 
 func TestMigrationToString(t *testing.T) {

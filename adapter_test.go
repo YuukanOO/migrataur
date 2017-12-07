@@ -5,6 +5,9 @@ import (
 	"time"
 )
 
+const mockInitialUp = "-- up from mock adapter"
+const mockInitialDown = "-- down from mock adapter"
+
 // mockAdapter implements an in memory migrataur adapter used for testing
 type mockAdapter struct {
 	appliedMigrations []*Migration
@@ -14,17 +17,17 @@ func newMockAdapter() *mockAdapter {
 	return &mockAdapter{}
 }
 
-func (a *mockAdapter) GetInitialMigration(name string) *Migration {
-	return &Migration{Name: name}
+func (a *mockAdapter) GetInitialMigration() (up, down string) {
+	return mockInitialUp, mockInitialDown
 }
 
-func (a *mockAdapter) AddMigration(migration *Migration) error {
+func (a *mockAdapter) MigrationApplied(migration *Migration) error {
 	a.appliedMigrations = append(a.appliedMigrations, migration)
 
 	return nil
 }
 
-func (a *mockAdapter) RemoveMigration(migration *Migration) error {
+func (a *mockAdapter) MigrationRollbacked(migration *Migration) error {
 	for i, m := range a.appliedMigrations {
 		if m.Name == migration.Name {
 			a.appliedMigrations = append(a.appliedMigrations[:i], a.appliedMigrations[i+1:]...)
@@ -59,15 +62,15 @@ func TestMockAdapter(t *testing.T) {
 	assert.
 		nil(err).
 		equals(0, len(migrations)).
-		nil(adapter.AddMigration(mig1)).
-		nil(adapter.AddMigration(mig2))
+		nil(adapter.MigrationApplied(mig1)).
+		nil(adapter.MigrationApplied(mig2))
 
 	migrations, err = adapter.GetAll()
 
 	assert.
 		nil(err).
 		equals(2, len(migrations)).
-		nil(adapter.RemoveMigration(mig1))
+		nil(adapter.MigrationRollbacked(mig1))
 
 	migrations, err = adapter.GetAll()
 

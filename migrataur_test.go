@@ -50,7 +50,9 @@ func TestMigrataurInit(t *testing.T) {
 		notNil(migration).
 		nil(err).
 		contains(DefaultOptions.InitialMigrationName, migration.Name).
-		false(migration.HasBeenApplied())
+		false(migration.HasBeenApplied()).
+		equals(mockInitialUp, migration.up).
+		equals(mockInitialDown, migration.down)
 }
 
 func TestMigrataurNew(t *testing.T) {
@@ -123,7 +125,14 @@ func TestMigrataurMigrate(t *testing.T) {
 func TestMigrataurGetAll(t *testing.T) {
 	cleanUpMigrationsDir()
 
+	assert := assert(t)
 	instance := New(&mockAdapter{}, DefaultOptions)
+
+	migrations, err := instance.GetAll()
+
+	assert.
+		nil(err).
+		equals(0, len(migrations))
 
 	instance.NewMigration("migration01")
 	instance.NewMigration("migration02")
@@ -133,9 +142,9 @@ func TestMigrataurGetAll(t *testing.T) {
 	instance.Migrate("migration01..migration02")
 	instance.Migrate("migration04")
 
-	migrations, err := instance.GetAll()
+	migrations, err = instance.GetAll()
 
-	assert(t).
+	assert.
 		nil(err).
 		equals(4, len(migrations))
 
