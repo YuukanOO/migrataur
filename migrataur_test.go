@@ -85,6 +85,12 @@ func TestMigrataurMigrateToLatest(t *testing.T) {
 		equals(4, len(applied)).
 		true(applied[0].IsInitial()).
 		migrationsEquals(applied, "migration01", "migration02", "migration03", "migration04")
+
+	applied, err = instance.MigrateToLatest()
+
+	assert(t).
+		nil(err).
+		equals(0, len(applied))
 }
 
 func TestMigrataurMigrate(t *testing.T) {
@@ -226,6 +232,12 @@ func TestMigrataurReset(t *testing.T) {
 		equals(4, len(applied)).
 		true(applied[3].IsInitial()).
 		migrationsEquals(applied, "migration04", "migration03", "migration02", "migration01")
+
+	applied, err = instance.Reset()
+
+	assert.
+		nil(err).
+		equals(0, len(applied))
 }
 
 func TestMigrationsSorting(t *testing.T) {
