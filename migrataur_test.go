@@ -127,6 +127,51 @@ func TestMigrataurNew(t *testing.T) {
 		exists(instance.options.Directory, migration.Name)
 }
 
+func TestMigrataurRemove(t *testing.T) {
+	cleanUpMigrationsDir()
+
+	assert := assert(t)
+	instance := New(&mockAdapter{}, DefaultOptions)
+
+	instance.NewMigration("migration01")
+	instance.NewMigration("migration02")
+	migration, _ := instance.NewMigration("migration03")
+	instance.NewMigration("migration04")
+	instance.NewMigration("migration05")
+	instance.NewMigration("migration06")
+
+	_, err := instance.MigrateToLatest()
+
+	assert.
+		nil(err).
+		exists(instance.options.Directory, migration.Name)
+
+	migrations, err := instance.RemoveMigrations("")
+
+	assert.
+		nil(err).
+		equals(0, len(migrations))
+
+	migrations, err = instance.RemoveMigrations("migration03")
+
+	assert.
+		nil(err).
+		equals(1, len(migrations)).
+		applied(migrations, "migration03").
+		notExists(instance.options.Directory, migration.Name)
+
+	migrations, err = instance.RemoveMigrations("migration02..migration01")
+
+	assert.
+		nil(err).
+		equals(2, len(migrations)).
+		applied(migrations, "migration02", "migration01")
+
+	_, err = instance.RemoveMigrations("migration04..migration06")
+
+	assert.notNil(err)
+}
+
 func TestMigrataurMigrateToLatest(t *testing.T) {
 	cleanUpMigrationsDir()
 
@@ -185,6 +230,10 @@ func TestMigrataurMigrate(t *testing.T) {
 	assert.
 		nil(err).
 		equals(0, len(applied))
+
+	_, err = instance.Migrate("doesnotexists")
+
+	assert.notNil(err)
 }
 
 func TestMigrataurGetAll(t *testing.T) {
@@ -263,6 +312,10 @@ func TestMigrataurRollback(t *testing.T) {
 	assert.
 		nil(err).
 		equals(0, len(applied))
+
+	_, err = instance.Rollback("doesnotexists")
+
+	assert.notNil(err)
 }
 
 func TestMigrataurReset(t *testing.T) {

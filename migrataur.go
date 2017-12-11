@@ -42,7 +42,7 @@ func New(adapter Adapter, opts Options) *Migrataur {
 func (m *Migrataur) Init() (*Migration, error) {
 	m.Printf("Initializing migrataur")
 
-	fullPath := m.getMigrationFullpath(m.options.InitialMigrationName)
+	fullPath := m.generateMigrationFullpath(m.options.InitialMigrationName)
 	up, down := m.adapter.GetInitialMigration()
 
 	initialMigration := &Migration{
@@ -60,12 +60,12 @@ func (m *Migrataur) Init() (*Migration, error) {
 	return initialMigration, nil
 }
 
-// NewMigration creates a new migration in the configured folder and returns the instance of the migration
-// attached to the newly created file
+// NewMigration creates a new migration in the configured folder and returns the
+// instance of the migration attached to the newly created file
 func (m *Migrataur) NewMigration(name string) (*Migration, error) {
 	m.Printf("Creating %s", name)
 
-	fullPath := m.getMigrationFullpath(name)
+	fullPath := m.generateMigrationFullpath(name)
 	migration := &Migration{Name: filepath.Base(fullPath)}
 
 	if err := migration.writeTo(fullPath, m.options.MarshalOptions); err != nil {
@@ -75,6 +75,38 @@ func (m *Migrataur) NewMigration(name string) (*Migration, error) {
 	m.Printf("\t%s created!", migration.Name)
 
 	return migration, nil
+}
+
+// RemoveMigrations removes one or many migrations given a name or a range. It will
+// rollbacks them and delete needed files.
+func (m *Migrataur) RemoveMigrations(rangeOrName string) ([]*Migration, error) {
+	m.Printf("Removing %s", rangeOrName)
+
+	start, end := getMigrationRange(rangeOrName)
+
+	migrations, err := m.getAllMigrationsForRange(start, end, dirDown)
+
+	if err != nil {
+		return nil, err
+	}
+
+	m.Printf("Rollbacking applied migrations")
+
+	if _, err = m.apply(migrations, dirDown); err != nil {
+		return nil, err
+	}
+
+	m.Printf("Removing files")
+
+	for _, mig := range migrations {
+		if err = os.Remove(m.getMigrationFullpath(mig.Name)); err != nil {
+			return nil, err
+		}
+
+		m.Printf("✓\t%s deleted!", mig.Name)
+	}
+
+	return migrations, nil
 }
 
 // GetAll retrieve all migrations for the current instance. It will list applied and pending migrations
@@ -373,7 +405,10 @@ func (m *Migrataur) applyOne(migration *Migration, direction dir) (bool, error) 
 	return true, nil
 }
 
+func (m *Migrataur) generateMigrationFullpath(name string) string {
+	return m.getMigrationFullpath(fmt.Sprintf("%s_%s%s", m.options.SequenceGenerator(), name, m.options.Extension))
+}
+
 func (m *Migrataur) getMigrationFullpath(name string) string {
-	return filepath.Join(m.options.Directory,
-		fmt.Sprintf("%s_%s%s", m.options.SequenceGenerator(), name, m.options.Extension))
+	return filepath.Join(m.options.Directory, name)
 }

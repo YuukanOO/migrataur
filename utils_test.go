@@ -94,3 +94,13 @@ func (a *assertInstance) exists(pathes ...string) *assertInstance {
 
 	return a
 }
+
+func (a *assertInstance) notExists(pathes ...string) *assertInstance {
+	path := filepath.Join(pathes...)
+
+	if _, err := os.Stat(path); err == nil {
+		a.t.Errorf("File %s exists", path)
+	}
+
+	return a
+}

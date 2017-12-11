@@ -59,6 +59,25 @@ func For(instance *migrataur.Migrataur) *cli.App {
 			},
 		},
 		{
+			Name:  "remove",
+			Usage: "Removes one or many migrations",
+			Action: func(c *cli.Context) error {
+				nameOrRange := c.Args().First()
+
+				if nameOrRange == "" {
+					return cli.NewExitError("You should provide a name or range to remove!", 1)
+				}
+
+				_, err := instance.RemoveMigrations(nameOrRange)
+
+				if err != nil {
+					return cli.NewExitError(err, 1)
+				}
+
+				return nil
+			},
+		},
+		{
 			Name:  "reset",
 			Usage: "Reset the database",
 			Action: func(c *cli.Context) error {
