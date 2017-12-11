@@ -7,10 +7,10 @@ type Adapter interface {
 	// GetInitialMigration retrieves the migration up and down code and is used to populate
 	// the migrations history table.
 	GetInitialMigration() (up, down string)
-	// MigrationApplied is called when the migration has been successfuly applied by the
+	// MigrationApplied is called when the migration has been successfully applied by the
 	// adapter. This is where you should insert the migration in the history.
 	MigrationApplied(migration *Migration) error
-	// MigrationRollbacked is called when the migration has been successfuly rolled back.
+	// MigrationRollbacked is called when the migration has been successfully rolled back.
 	// This is where you should remove the migration from the history.
 	MigrationRollbacked(migration *Migration) error
 	// Exec the given commands. This is call by Migrataur to apply or rollback a migration

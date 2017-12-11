@@ -53,6 +53,8 @@ func (a *Adapter) getPlaceholder(idx int) string {
 	return strings.Replace(a.placeholder, "{i}", strconv.Itoa(idx), -1)
 }
 
+// GetInitialMigration retrieves the migration up and down code and is used to populate
+// the migrations history table.
 func (a *Adapter) GetInitialMigration() (up, down string) {
 	return fmt.Sprintf(`-- Do not edit this migration unless you know what you're doing!
 create table %s(
@@ -62,12 +64,16 @@ create table %s(
 drop table %s;`, a.tableName)
 }
 
+// MigrationApplied is called when the migration has been successfully applied by the
+// adapter. This is where you should insert the migration in the history.
 func (a *Adapter) MigrationApplied(migration *migrataur.Migration) error {
 	_, err := a.db.Exec(fmt.Sprintf("insert into %s values (%s, %s)", a.tableName, a.getPlaceholder(1), a.getPlaceholder(2)), migration.Name, *migration.AppliedAt)
 
 	return err
 }
 
+// MigrationRollbacked is called when the migration has been successfully rolled back.
+// This is where you should remove the migration from the history.
 func (a *Adapter) MigrationRollbacked(migration *migrataur.Migration) error {
 	if migration.IsInitial() {
 		return nil
@@ -78,12 +84,15 @@ func (a *Adapter) MigrationRollbacked(migration *migrataur.Migration) error {
 	return err
 }
 
+// Exec the given commands. This is call by Migrataur to apply or rollback a migration
+// with the corresponding code.
 func (a *Adapter) Exec(command string) error {
 	_, err := a.db.Exec(command)
 
 	return err
 }
 
+// GetAll retrieves all migrations for this adapter
 func (a *Adapter) GetAll() ([]*migrataur.Migration, error) {
 	// If the database has not been initialized, the migration table doesn't exist yet
 	// so fail silently for now

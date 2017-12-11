@@ -52,7 +52,7 @@ func (m *Migration) markAsInitial() {
 	m.isInitial = true
 }
 
-// IsInitial checks if this migration appears to be the initial one. It is primarly used
+// IsInitial checks if this migration appears to be the initial one. It is primarily used
 // in adapters when you want to perform specific checks.
 func (m *Migration) IsInitial() bool {
 	return m.isInitial

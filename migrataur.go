@@ -332,7 +332,7 @@ func (m *Migrataur) getAllMigrations(direction dir) ([]*Migration, error) {
 
 	sortMigrations(fileSystemMigrations, direction)
 
-	// Find the initial migration and marks it. This is used primarly by adapters to
+	// Find the initial migration and marks it. This is used primarily by adapters to
 	// perform specific behaviors
 	if migrationsCount > 0 {
 		switch direction {
