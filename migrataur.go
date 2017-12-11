@@ -154,13 +154,6 @@ func (m *Migrataur) Printf(format string, args ...interface{}) {
 	}
 }
 
-// Fatalf logs a fatal message using the provided Logger if any
-func (m *Migrataur) Fatalf(format string, args ...interface{}) {
-	if m.options.Logger != nil {
-		m.options.Logger.Fatalf(format, args...)
-	}
-}
-
 func (m *Migrataur) applyAll(direction dir) ([]*Migration, error) {
 	migrations, err := m.getAllMigrations(direction)
 
