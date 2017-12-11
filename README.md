@@ -8,7 +8,7 @@ Instead of providing only a CLI, it exposes a simple API that you can use in you
 
 ## Documentation
 
-Documentation is available at [godoc]() but here is a sneak peak:
+Documentation is available at [godoc](https://godoc.org/github.com/YuukanOO/migrataur) but here is a sneak peak:
 
 ```go
 package main
