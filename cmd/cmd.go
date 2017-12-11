@@ -49,7 +49,7 @@ func For(instance *migrataur.Migrataur) *cli.App {
 					return cli.NewExitError("You should provide a name!", 1)
 				}
 
-				_, err := instance.NewMigration(name)
+				_, err := instance.New(name)
 
 				if err != nil {
 					return cli.NewExitError(err, 1)
@@ -68,7 +68,7 @@ func For(instance *migrataur.Migrataur) *cli.App {
 					return cli.NewExitError("You should provide a name or range to remove!", 1)
 				}
 
-				_, err := instance.RemoveMigrations(nameOrRange)
+				_, err := instance.Remove(nameOrRange)
 
 				if err != nil {
 					return cli.NewExitError(err, 1)

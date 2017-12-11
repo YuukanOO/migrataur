@@ -45,11 +45,11 @@ func TestGetAllMigrationsForRange(t *testing.T) {
 	assert := assert(t)
 	instance := New(&mockAdapter{}, DefaultOptions)
 
-	instance.NewMigration("migration01")
-	instance.NewMigration("migration02")
-	instance.NewMigration("migration03")
-	instance.NewMigration("migration04")
-	instance.NewMigration("migration05")
+	instance.New("migration01")
+	instance.New("migration02")
+	instance.New("migration03")
+	instance.New("migration04")
+	instance.New("migration05")
 
 	migrations, err := instance.getAllMigrationsForRange("", "", dirUp)
 
@@ -118,7 +118,7 @@ func TestMigrataurNew(t *testing.T) {
 
 	instance := New(&mockAdapter{}, DefaultOptions)
 
-	migration, err := instance.NewMigration("migration01")
+	migration, err := instance.New("migration01")
 
 	assert(t).
 		notNil(migration).
@@ -133,12 +133,12 @@ func TestMigrataurRemove(t *testing.T) {
 	assert := assert(t)
 	instance := New(&mockAdapter{}, DefaultOptions)
 
-	instance.NewMigration("migration01")
-	instance.NewMigration("migration02")
-	migration, _ := instance.NewMigration("migration03")
-	instance.NewMigration("migration04")
-	instance.NewMigration("migration05")
-	instance.NewMigration("migration06")
+	instance.New("migration01")
+	instance.New("migration02")
+	migration, _ := instance.New("migration03")
+	instance.New("migration04")
+	instance.New("migration05")
+	instance.New("migration06")
 
 	_, err := instance.MigrateToLatest()
 
@@ -146,13 +146,13 @@ func TestMigrataurRemove(t *testing.T) {
 		nil(err).
 		exists(instance.options.Directory, migration.Name)
 
-	migrations, err := instance.RemoveMigrations("")
+	migrations, err := instance.Remove("")
 
 	assert.
 		nil(err).
 		equals(0, len(migrations))
 
-	migrations, err = instance.RemoveMigrations("migration03")
+	migrations, err = instance.Remove("migration03")
 
 	assert.
 		nil(err).
@@ -160,14 +160,14 @@ func TestMigrataurRemove(t *testing.T) {
 		applied(migrations, "migration03").
 		notExists(instance.options.Directory, migration.Name)
 
-	migrations, err = instance.RemoveMigrations("migration02..migration01")
+	migrations, err = instance.Remove("migration02..migration01")
 
 	assert.
 		nil(err).
 		equals(2, len(migrations)).
 		applied(migrations, "migration02", "migration01")
 
-	_, err = instance.RemoveMigrations("migration04..migration06")
+	_, err = instance.Remove("migration04..migration06")
 
 	assert.notNil(err)
 }
@@ -177,10 +177,10 @@ func TestMigrataurMigrateToLatest(t *testing.T) {
 
 	instance := New(&mockAdapter{}, DefaultOptions)
 
-	instance.NewMigration("migration01")
-	instance.NewMigration("migration02")
-	instance.NewMigration("migration03")
-	instance.NewMigration("migration04")
+	instance.New("migration01")
+	instance.New("migration02")
+	instance.New("migration03")
+	instance.New("migration04")
 
 	applied, err := instance.MigrateToLatest()
 
@@ -204,12 +204,12 @@ func TestMigrataurMigrate(t *testing.T) {
 
 	instance := New(&mockAdapter{}, DefaultOptions)
 
-	instance.NewMigration("migration01")
-	instance.NewMigration("migration02")
-	instance.NewMigration("migration03")
-	instance.NewMigration("migration04")
-	instance.NewMigration("migration05")
-	instance.NewMigration("migration06")
+	instance.New("migration01")
+	instance.New("migration02")
+	instance.New("migration03")
+	instance.New("migration04")
+	instance.New("migration05")
+	instance.New("migration06")
 
 	applied, err := instance.Migrate("migration02..migration04")
 
@@ -248,10 +248,10 @@ func TestMigrataurGetAll(t *testing.T) {
 		nil(err).
 		equals(0, len(migrations))
 
-	instance.NewMigration("migration01")
-	instance.NewMigration("migration02")
-	instance.NewMigration("migration03")
-	instance.NewMigration("migration04")
+	instance.New("migration01")
+	instance.New("migration02")
+	instance.New("migration03")
+	instance.New("migration04")
 
 	instance.Migrate("migration01..migration02")
 	instance.Migrate("migration04")
@@ -280,11 +280,11 @@ func TestMigrataurRollback(t *testing.T) {
 
 	instance := New(&mockAdapter{}, DefaultOptions)
 
-	instance.NewMigration("migration01")
-	instance.NewMigration("migration02")
-	instance.NewMigration("migration03")
-	instance.NewMigration("migration04")
-	instance.NewMigration("migration05")
+	instance.New("migration01")
+	instance.New("migration02")
+	instance.New("migration03")
+	instance.New("migration04")
+	instance.New("migration05")
 
 	applied, err := instance.MigrateToLatest()
 
@@ -325,10 +325,10 @@ func TestMigrataurReset(t *testing.T) {
 
 	instance := New(&mockAdapter{}, DefaultOptions)
 
-	instance.NewMigration("migration01")
-	instance.NewMigration("migration02")
-	instance.NewMigration("migration03")
-	instance.NewMigration("migration04")
+	instance.New("migration01")
+	instance.New("migration02")
+	instance.New("migration03")
+	instance.New("migration04")
 
 	applied, err := instance.MigrateToLatest()
 

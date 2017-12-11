@@ -60,9 +60,9 @@ func (m *Migrataur) Init() (*Migration, error) {
 	return initialMigration, nil
 }
 
-// NewMigration creates a new migration in the configured folder and returns the
+// New creates a new migration in the configured folder and returns the
 // instance of the migration attached to the newly created file
-func (m *Migrataur) NewMigration(name string) (*Migration, error) {
+func (m *Migrataur) New(name string) (*Migration, error) {
 	m.Printf("Creating %s", name)
 
 	fullPath := m.generateMigrationFullpath(name)
@@ -77,9 +77,9 @@ func (m *Migrataur) NewMigration(name string) (*Migration, error) {
 	return migration, nil
 }
 
-// RemoveMigrations removes one or many migrations given a name or a range. It will
+// Remove one or many migrations given a name or a range. It will
 // rollbacks them and delete needed files.
-func (m *Migrataur) RemoveMigrations(rangeOrName string) ([]*Migration, error) {
+func (m *Migrataur) Remove(rangeOrName string) ([]*Migration, error) {
 	m.Printf("Removing %s", rangeOrName)
 
 	start, end := getMigrationRange(rangeOrName)
