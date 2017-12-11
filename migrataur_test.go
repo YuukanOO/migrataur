@@ -356,10 +356,10 @@ func TestMigrationsSorting(t *testing.T) {
 	assert := assert(t)
 
 	migrations := []*Migration{
-		&Migration{Name: "migration03"},
-		&Migration{Name: "migration04"},
-		&Migration{Name: "migration02"},
-		&Migration{Name: "migration01"},
+		{Name: "migration03"},
+		{Name: "migration04"},
+		{Name: "migration02"},
+		{Name: "migration01"},
 	}
 
 	sortMigrations(migrations, dirUp)
