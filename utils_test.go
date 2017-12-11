@@ -1,6 +1,8 @@
 package migrataur
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -71,13 +73,23 @@ func (a *assertInstance) nil(actual interface{}) *assertInstance {
 	return a
 }
 
-func (a *assertInstance) migrationsEquals(migrations []*Migration, names ...string) *assertInstance {
+func (a *assertInstance) applied(migrations []*Migration, names ...string) *assertInstance {
 	lenActual, lenExpected := len(migrations), len(names)
 
 	a.equals(lenExpected, lenActual)
 
 	for i := 0; i < len(migrations); i++ {
 		a.contains(names[i], migrations[i].Name)
+	}
+
+	return a
+}
+
+func (a *assertInstance) exists(pathes ...string) *assertInstance {
+	path := filepath.Join(pathes...)
+
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		a.t.Errorf("File %s does not exists", path)
 	}
 
 	return a

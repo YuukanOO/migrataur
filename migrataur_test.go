@@ -51,33 +51,49 @@ func TestGetAllMigrationsForRange(t *testing.T) {
 	instance.NewMigration("migration04")
 	instance.NewMigration("migration05")
 
-	migrations, err := instance.getAllMigrationsForRange("migration01", "", dirUp)
+	migrations, err := instance.getAllMigrationsForRange("", "", dirUp)
+
+	assert.
+		nil(err).
+		equals(0, len(migrations))
+
+	_, err = instance.getAllMigrationsForRange("doesnotexists", "", dirUp)
+
+	assert.
+		notNil(err)
+
+	_, err = instance.getAllMigrationsForRange("migration01", "doesnotexists", dirUp)
+
+	assert.
+		notNil(err)
+
+	migrations, err = instance.getAllMigrationsForRange("migration01", "", dirUp)
 
 	assert.
 		nil(err).
 		equals(1, len(migrations)).
-		migrationsEquals(migrations, "migration01")
+		applied(migrations, "migration01")
 
 	migrations, err = instance.getAllMigrationsForRange("migration03", "migration05", dirUp)
 
 	assert.
 		nil(err).
 		equals(3, len(migrations)).
-		migrationsEquals(migrations, "migration03", "migration04", "migration05")
+		applied(migrations, "migration03", "migration04", "migration05")
 
 	migrations, err = instance.getAllMigrationsForRange("migration05", "", dirDown)
 
 	assert.
 		nil(err).
 		equals(1, len(migrations)).
-		migrationsEquals(migrations, "migration05")
+		applied(migrations, "migration05")
 
 	migrations, err = instance.getAllMigrationsForRange("migration05", "migration02", dirDown)
 
 	assert.
 		nil(err).
 		equals(4, len(migrations)).
-		migrationsEquals(migrations, "migration05", "migration04", "migration03", "migration02")
+		applied(migrations, "migration05", "migration04", "migration03", "migration02")
 }
 
 func TestMigrataurInit(t *testing.T) {
@@ -93,7 +109,8 @@ func TestMigrataurInit(t *testing.T) {
 		contains(DefaultOptions.InitialMigrationName, migration.Name).
 		false(migration.HasBeenApplied()).
 		equals(mockInitialUp, migration.up).
-		equals(mockInitialDown, migration.down)
+		equals(mockInitialDown, migration.down).
+		exists(instance.options.Directory, migration.Name)
 }
 
 func TestMigrataurNew(t *testing.T) {
@@ -106,7 +123,8 @@ func TestMigrataurNew(t *testing.T) {
 	assert(t).
 		notNil(migration).
 		nil(err).
-		contains("migration01.sql", migration.Name)
+		contains("migration01.sql", migration.Name).
+		exists(instance.options.Directory, migration.Name)
 }
 
 func TestMigrataurMigrateToLatest(t *testing.T) {
@@ -125,7 +143,7 @@ func TestMigrataurMigrateToLatest(t *testing.T) {
 		nil(err).
 		equals(4, len(applied)).
 		true(applied[0].IsInitial()).
-		migrationsEquals(applied, "migration01", "migration02", "migration03", "migration04")
+		applied(applied, "migration01", "migration02", "migration03", "migration04")
 
 	applied, err = instance.MigrateToLatest()
 
@@ -153,14 +171,14 @@ func TestMigrataurMigrate(t *testing.T) {
 	assert.
 		nil(err).
 		equals(3, len(applied)).
-		migrationsEquals(applied, "migration02", "migration03", "migration04")
+		applied(applied, "migration02", "migration03", "migration04")
 
 	applied, err = instance.Migrate("migration05")
 
 	assert.
 		nil(err).
 		equals(1, len(applied)).
-		migrationsEquals(applied, "migration05")
+		applied(applied, "migration05")
 
 	applied, err = instance.Migrate("migration05")
 
@@ -224,21 +242,21 @@ func TestMigrataurRollback(t *testing.T) {
 	assert.
 		nil(err).
 		equals(5, len(applied)).
-		migrationsEquals(applied, "migration01", "migration02", "migration03", "migration04", "migration05")
+		applied(applied, "migration01", "migration02", "migration03", "migration04", "migration05")
 
 	applied, err = instance.Rollback("migration05..migration03")
 
 	assert.
 		nil(err).
 		equals(3, len(applied)).
-		migrationsEquals(applied, "migration05", "migration04", "migration03")
+		applied(applied, "migration05", "migration04", "migration03")
 
 	applied, err = instance.Rollback("migration02")
 
 	assert.
 		nil(err).
 		equals(1, len(applied)).
-		migrationsEquals(applied, "migration02")
+		applied(applied, "migration02")
 
 	applied, err = instance.Rollback("migration02")
 
@@ -264,7 +282,7 @@ func TestMigrataurReset(t *testing.T) {
 	assert.
 		nil(err).
 		equals(4, len(applied)).
-		migrationsEquals(applied, "migration01", "migration02", "migration03", "migration04")
+		applied(applied, "migration01", "migration02", "migration03", "migration04")
 
 	applied, err = instance.Reset()
 
@@ -272,7 +290,7 @@ func TestMigrataurReset(t *testing.T) {
 		nil(err).
 		equals(4, len(applied)).
 		true(applied[3].IsInitial()).
-		migrationsEquals(applied, "migration04", "migration03", "migration02", "migration01")
+		applied(applied, "migration04", "migration03", "migration02", "migration01")
 
 	applied, err = instance.Reset()
 
@@ -293,11 +311,11 @@ func TestMigrationsSorting(t *testing.T) {
 
 	sortMigrations(migrations, dirUp)
 
-	assert.migrationsEquals(migrations, "migration01", "migration02", "migration03", "migration04")
+	assert.applied(migrations, "migration01", "migration02", "migration03", "migration04")
 
 	sortMigrations(migrations, dirDown)
 
-	assert.migrationsEquals(migrations, "migration04", "migration03", "migration02", "migration01")
+	assert.applied(migrations, "migration04", "migration03", "migration02", "migration01")
 }
 
 func TestWithLoggerNilShouldNotPanic(t *testing.T) {
@@ -307,5 +325,5 @@ func TestWithLoggerNilShouldNotPanic(t *testing.T) {
 
 	instance.GetAll()
 
-	assert(t).nil(instance.Options.Logger)
+	assert(t).nil(instance.options.Logger)
 }

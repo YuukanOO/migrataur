@@ -25,7 +25,7 @@ const (
 // Migrataur represents an instance configurated for a particular use.
 // This is the main object you will use.
 type Migrataur struct {
-	Options Options
+	options Options
 	adapter Adapter
 }
 
@@ -33,7 +33,7 @@ type Migrataur struct {
 func New(adapter Adapter, opts Options) *Migrataur {
 	return &Migrataur{
 		adapter: adapter,
-		Options: opts.ExtendWith(DefaultOptions),
+		options: opts.ExtendWith(DefaultOptions),
 	}
 }
 
@@ -42,7 +42,7 @@ func New(adapter Adapter, opts Options) *Migrataur {
 func (m *Migrataur) Init() (*Migration, error) {
 	m.Printf("Initializing migrataur")
 
-	fullPath := m.getMigrationFullpath(m.Options.InitialMigrationName)
+	fullPath := m.getMigrationFullpath(m.options.InitialMigrationName)
 	up, down := m.adapter.GetInitialMigration()
 
 	initialMigration := &Migration{
@@ -51,7 +51,7 @@ func (m *Migrataur) Init() (*Migration, error) {
 		down: down,
 	}
 
-	if err := initialMigration.writeTo(fullPath, m.Options.MarshalOptions); err != nil {
+	if err := initialMigration.writeTo(fullPath, m.options.MarshalOptions); err != nil {
 		return nil, err
 	}
 
@@ -68,7 +68,7 @@ func (m *Migrataur) NewMigration(name string) (*Migration, error) {
 	fullPath := m.getMigrationFullpath(name)
 	migration := &Migration{Name: filepath.Base(fullPath)}
 
-	if err := migration.writeTo(fullPath, m.Options.MarshalOptions); err != nil {
+	if err := migration.writeTo(fullPath, m.options.MarshalOptions); err != nil {
 		return nil, err
 	}
 
@@ -79,7 +79,7 @@ func (m *Migrataur) NewMigration(name string) (*Migration, error) {
 
 // GetAll retrieve all migrations for the current instance. It will list applied and pending migrations
 func (m *Migrataur) GetAll() ([]*Migration, error) {
-	m.Printf("Fetching migrations in %s", m.Options.Directory)
+	m.Printf("Fetching migrations in %s", m.options.Directory)
 
 	return m.getAllMigrations(dirUp)
 }
@@ -117,15 +117,15 @@ func (m *Migrataur) Reset() ([]*Migration, error) {
 
 // Printf logs a message using the provided Logger if any
 func (m *Migrataur) Printf(format string, args ...interface{}) {
-	if m.Options.Logger != nil {
-		m.Options.Logger.Printf(format, args...)
+	if m.options.Logger != nil {
+		m.options.Logger.Printf(format, args...)
 	}
 }
 
 // Fatalf logs a fatal message using the provided Logger if any
 func (m *Migrataur) Fatalf(format string, args ...interface{}) {
-	if m.Options.Logger != nil {
-		m.Options.Logger.Fatalf(format, args...)
+	if m.options.Logger != nil {
+		m.options.Logger.Fatalf(format, args...)
 	}
 }
 
@@ -153,7 +153,7 @@ func (m *Migrataur) applyRange(rangeOrName string, direction dir) ([]*Migration,
 // getAllFromFilesystem reads all migrations in the directory and instantiates them.
 func (m *Migrataur) getAllFromFilesystem() ([]*Migration, error) {
 	migrations := []*Migration{}
-	files, err := ioutil.ReadDir(m.Options.Directory)
+	files, err := ioutil.ReadDir(m.options.Directory)
 
 	if err != nil {
 		pathErr, ok := err.(*os.PathError)
@@ -173,13 +173,13 @@ func (m *Migrataur) getAllFromFilesystem() ([]*Migration, error) {
 
 		existingMigration := &Migration{Name: f.Name()}
 
-		data, err := ioutil.ReadFile(filepath.Join(m.Options.Directory, f.Name()))
+		data, err := ioutil.ReadFile(filepath.Join(m.options.Directory, f.Name()))
 
 		if err != nil {
 			return nil, err
 		}
 
-		if err = existingMigration.unmarshal(data, m.Options.MarshalOptions); err != nil {
+		if err = existingMigration.unmarshal(data, m.options.MarshalOptions); err != nil {
 			return nil, err
 		}
 
@@ -223,42 +223,51 @@ func (m *Migrataur) apply(migrations []*Migration, direction dir) ([]*Migration,
 
 // getAllMigrationsForRange retrieves all migrations concerned by a range
 func (m *Migrataur) getAllMigrationsForRange(start, end string, direction dir) ([]*Migration, error) {
+	if start == "" {
+		return []*Migration{}, nil
+	}
+
 	migrations, err := m.getAllMigrations(direction)
 
 	if err != nil {
 		return nil, err
 	}
 
-	rangeMigrations := []*Migration{}
+	idxStart, idxEnd := -1, -1
 
-	if start == "" {
-		return rangeMigrations, nil
-	}
-
-	startApplied := false
-
-	for _, mig := range migrations {
-		if !startApplied {
+	for i, mig := range migrations {
+		if idxStart == -1 {
 			if strings.Contains(mig.Name, start) {
-				startApplied = true
-				rangeMigrations = append(rangeMigrations, mig)
+				idxStart = i
 
 				// Break early if no end migration has been set or if the end is the same
 				if end == "" || start == end {
+					idxEnd = idxStart + 1
 					break
 				}
 			}
 		} else {
-			rangeMigrations = append(rangeMigrations, mig)
-
 			// If we reach the end, break
 			if strings.Contains(mig.Name, end) {
+				idxEnd = i + 1
 				break
 			}
 		}
 	}
 
-	return rangeMigrations, nil
+	if idxStart == -1 {
+		err := fmt.Errorf("\tCould not find the lower bound %s", start)
+		m.Printf(err.Error())
+		return nil, err
+	}
+
+	if idxEnd == -1 {
+		err := fmt.Errorf("\tCould not find the upper bound %s", end)
+		m.Printf(err.Error())
+		return nil, err
+	}
+
+	return migrations[idxStart:idxEnd], nil
 }
 
 // getAllMigrations retrieves all migrations from the filesystem, and from the
@@ -338,7 +347,7 @@ func (m *Migrataur) applyOne(migration *Migration, direction dir) (bool, error) 
 	}
 
 	if err := m.adapter.Exec(command); err != nil {
-		m.Fatalf("✗\t%s: %s", migration.Name, err)
+		m.Printf("✗\t%s: %s", migration.Name, err)
 		return false, err
 	}
 
@@ -346,7 +355,7 @@ func (m *Migrataur) applyOne(migration *Migration, direction dir) (bool, error) 
 		migration.hasBeenAppliedAt(time.Now().UTC())
 
 		if err := m.adapter.MigrationApplied(migration); err != nil {
-			m.Fatalf("✗\t%s: %s", migration.Name, err)
+			m.Printf("✗\t%s: %s", migration.Name, err)
 			return false, err
 		}
 
@@ -354,7 +363,7 @@ func (m *Migrataur) applyOne(migration *Migration, direction dir) (bool, error) 
 		migration.hasBeenRolledBack()
 
 		if err := m.adapter.MigrationRollbacked(migration); err != nil {
-			m.Fatalf("✗\t%s: %s", migration.Name, err)
+			m.Printf("✗\t%s: %s", migration.Name, err)
 			return false, err
 		}
 	}
@@ -365,6 +374,6 @@ func (m *Migrataur) applyOne(migration *Migration, direction dir) (bool, error) 
 }
 
 func (m *Migrataur) getMigrationFullpath(name string) string {
-	return filepath.Join(m.Options.Directory,
-		fmt.Sprintf("%s_%s%s", m.Options.SequenceGenerator(), name, m.Options.Extension))
+	return filepath.Join(m.options.Directory,
+		fmt.Sprintf("%s_%s%s", m.options.SequenceGenerator(), name, m.options.Extension))
 }
