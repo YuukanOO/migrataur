@@ -36,7 +36,8 @@ func main() {
   // needs to work properly.
   instance.Init()
 
-  // Creates a new migration
+  // Creates a new migration and write it to the filesystem, the actual name will
+  // be generated using the configurated SequenceGenerator and Extension
   instance.New("migration01")
   instance.New("migration02")
   instance.New("migration03")

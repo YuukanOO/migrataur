@@ -98,11 +98,11 @@ func (m *Migration) unmarshal(text []byte, options MarshalOptions) error {
 func (m *Migration) writeTo(path string, options MarshalOptions) error {
 
 	// Make sure the directory exists
-	if err := os.MkdirAll(filepath.Dir(path), os.ModeDir); err != nil {
+	if err := osAdapter.MkdirAll(filepath.Dir(path), os.ModeDir); err != nil {
 		return err
 	}
 
-	file, err := os.Create(path)
+	file, err := osAdapter.Create(path)
 
 	if err != nil {
 		return err
