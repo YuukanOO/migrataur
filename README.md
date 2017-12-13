@@ -1,6 +1,6 @@
 # migrataur : a migration library for Go
 
-![build status](https://ci.voixdunet.com/api/badges/jleicher/migrataur/status.svg)
+[![Build Status](https://travis-ci.org/YuukanOO/migrataur.svg?branch=master)](https://travis-ci.org/YuukanOO/migrataur)
 [![Go Report Card](https://goreportcard.com/badge/github.com/YuukanOO/migrataur)](https://goreportcard.com/report/github.com/YuukanOO/migrataur)
 
 **migrataur** is a simple and easy to understand library to manage database migrations in Go.
