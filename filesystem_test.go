@@ -23,7 +23,7 @@ func TestMain(m *testing.M) {
 }
 
 type mockFileSystem struct {
-	files []os.FileInfo // This where are stored expected files returns by ReadDir
+	files []os.FileInfo // This is where are stored expected files that must be returned by ReadDir
 }
 
 func (fs *mockFileSystem) Create(path string) (file, error) {
