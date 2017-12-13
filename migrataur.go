@@ -11,9 +11,6 @@ import (
 	"time"
 )
 
-// This is deported to make testing easier when using mocks
-var osAdapter fileSystem = osFileSystem{}
-
 // Those ones are used to define migration's directions
 type dir int
 
@@ -101,7 +98,7 @@ func (m *Migrataur) Remove(rangeOrName string) ([]*Migration, error) {
 	m.Printf("Removing files")
 
 	for _, mig := range migrations {
-		if err = osAdapter.Remove(m.getMigrationFullpath(mig.Name)); err != nil {
+		if err = fsAdapter.Remove(m.getMigrationFullpath(mig.Name)); err != nil {
 			return nil, err
 		}
 
@@ -180,7 +177,7 @@ func (m *Migrataur) applyRange(rangeOrName string, direction dir) ([]*Migration,
 // getAllFromFilesystem reads all migrations in the directory and instantiates them.
 func (m *Migrataur) getAllFromFilesystem() ([]*Migration, error) {
 	migrations := []*Migration{}
-	files, err := osAdapter.ReadDir(m.options.Directory)
+	files, err := fsAdapter.ReadDir(m.options.Directory)
 
 	if err != nil {
 		pathErr, ok := err.(*os.PathError)
@@ -200,7 +197,7 @@ func (m *Migrataur) getAllFromFilesystem() ([]*Migration, error) {
 
 		existingMigration := &Migration{Name: f.Name()}
 
-		data, err := osAdapter.ReadFile(filepath.Join(m.options.Directory, f.Name()))
+		data, err := fsAdapter.ReadFile(filepath.Join(m.options.Directory, f.Name()))
 
 		if err != nil {
 			return nil, err

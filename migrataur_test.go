@@ -1,21 +1,9 @@
 package migrataur
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
-
-// Utility funcs used for testing
-
-func cleanUpMigrationsDir() {
-	fullpath, _ := filepath.Abs(DefaultOptions.Directory)
-
-	if err := os.RemoveAll(fullpath); err != nil {
-		panic(err)
-	}
-}
 
 func TestGetRangeStr(t *testing.T) {
 	assert := assert(t)
@@ -40,16 +28,17 @@ func TestGetRangeStr(t *testing.T) {
 }
 
 func TestGetAllMigrationsForRange(t *testing.T) {
-	cleanUpMigrationsDir()
+
+	mockFSAdapter.hasFiles(
+		mockFileInfo{name: "migration01.sql"},
+		mockFileInfo{name: "migration02.sql"},
+		mockFileInfo{name: "migration03.sql"},
+		mockFileInfo{name: "migration04.sql"},
+		mockFileInfo{name: "migration05.sql"},
+	)
 
 	assert := assert(t)
 	instance := New(&mockAdapter{}, DefaultOptions)
-
-	instance.New("migration01")
-	instance.New("migration02")
-	instance.New("migration03")
-	instance.New("migration04")
-	instance.New("migration05")
 
 	migrations, err := instance.getAllMigrationsForRange("", "", dirUp)
 
@@ -97,10 +86,9 @@ func TestGetAllMigrationsForRange(t *testing.T) {
 }
 
 func TestMigrataurInit(t *testing.T) {
-	cleanUpMigrationsDir()
+	mockFSAdapter.empty()
 
 	instance := New(&mockAdapter{}, DefaultOptions)
-
 	migration, err := instance.Init()
 
 	assert(t).
@@ -110,41 +98,40 @@ func TestMigrataurInit(t *testing.T) {
 		false(migration.HasBeenApplied()).
 		equals(mockInitialUp, migration.up).
 		equals(mockInitialDown, migration.down).
-		exists(instance.options.Directory, migration.Name)
+		exists(migration.Name)
 }
 
 func TestMigrataurNew(t *testing.T) {
-	cleanUpMigrationsDir()
+	mockFSAdapter.empty()
 
 	instance := New(&mockAdapter{}, DefaultOptions)
-
 	migration, err := instance.New("migration01")
 
 	assert(t).
 		notNil(migration).
 		nil(err).
 		contains("migration01.sql", migration.Name).
-		exists(instance.options.Directory, migration.Name)
+		exists(migration.Name)
 }
 
 func TestMigrataurRemove(t *testing.T) {
-	cleanUpMigrationsDir()
+	mockFSAdapter.hasFiles(
+		mockFileInfo{name: "migration01.sql"},
+		mockFileInfo{name: "migration02.sql"},
+		mockFileInfo{name: "migration03.sql"},
+		mockFileInfo{name: "migration04.sql"},
+		mockFileInfo{name: "migration05.sql"},
+		mockFileInfo{name: "migration06.sql"},
+	)
 
 	assert := assert(t)
 	instance := New(&mockAdapter{}, DefaultOptions)
-
-	instance.New("migration01")
-	instance.New("migration02")
-	migration, _ := instance.New("migration03")
-	instance.New("migration04")
-	instance.New("migration05")
-	instance.New("migration06")
 
 	_, err := instance.MigrateToLatest()
 
 	assert.
 		nil(err).
-		exists(instance.options.Directory, migration.Name)
+		exists("migration03.sql")
 
 	migrations, err := instance.Remove("")
 
@@ -158,7 +145,7 @@ func TestMigrataurRemove(t *testing.T) {
 		nil(err).
 		equals(1, len(migrations)).
 		applied(migrations, "migration03").
-		notExists(instance.options.Directory, migration.Name)
+		notExists("migration03.sql")
 
 	migrations, err = instance.Remove("migration02..migration01")
 
@@ -173,15 +160,14 @@ func TestMigrataurRemove(t *testing.T) {
 }
 
 func TestMigrataurMigrateToLatest(t *testing.T) {
-	cleanUpMigrationsDir()
+	mockFSAdapter.hasFiles(
+		mockFileInfo{name: "migration01.sql"},
+		mockFileInfo{name: "migration02.sql"},
+		mockFileInfo{name: "migration03.sql"},
+		mockFileInfo{name: "migration04.sql"},
+	)
 
 	instance := New(&mockAdapter{}, DefaultOptions)
-
-	instance.New("migration01")
-	instance.New("migration02")
-	instance.New("migration03")
-	instance.New("migration04")
-
 	applied, err := instance.MigrateToLatest()
 
 	assert(t).
@@ -198,19 +184,18 @@ func TestMigrataurMigrateToLatest(t *testing.T) {
 }
 
 func TestMigrataurMigrate(t *testing.T) {
-	cleanUpMigrationsDir()
+	mockFSAdapter.hasFiles(
+		mockFileInfo{name: "migration01.sql"},
+		mockFileInfo{name: "migration02.sql"},
+		mockFileInfo{name: "migration03.sql"},
+		mockFileInfo{name: "migration04.sql"},
+		mockFileInfo{name: "migration05.sql"},
+		mockFileInfo{name: "migration06.sql"},
+	)
 
 	assert := assert(t)
 
 	instance := New(&mockAdapter{}, DefaultOptions)
-
-	instance.New("migration01")
-	instance.New("migration02")
-	instance.New("migration03")
-	instance.New("migration04")
-	instance.New("migration05")
-	instance.New("migration06")
-
 	applied, err := instance.Migrate("migration02..migration04")
 
 	assert.
@@ -237,7 +222,7 @@ func TestMigrataurMigrate(t *testing.T) {
 }
 
 func TestMigrataurGetAll(t *testing.T) {
-	cleanUpMigrationsDir()
+	mockFSAdapter.hasFiles()
 
 	assert := assert(t)
 	instance := New(&mockAdapter{}, DefaultOptions)
@@ -248,10 +233,12 @@ func TestMigrataurGetAll(t *testing.T) {
 		nil(err).
 		equals(0, len(migrations))
 
-	instance.New("migration01")
-	instance.New("migration02")
-	instance.New("migration03")
-	instance.New("migration04")
+	mockFSAdapter.hasFiles(
+		mockFileInfo{name: "migration01.sql"},
+		mockFileInfo{name: "migration02.sql"},
+		mockFileInfo{name: "migration03.sql"},
+		mockFileInfo{name: "migration04.sql"},
+	)
 
 	instance.Migrate("migration01..migration02")
 	instance.Migrate("migration04")
@@ -274,18 +261,16 @@ func TestMigrataurGetAll(t *testing.T) {
 }
 
 func TestMigrataurRollback(t *testing.T) {
-	cleanUpMigrationsDir()
+	mockFSAdapter.hasFiles(
+		mockFileInfo{name: "migration01.sql"},
+		mockFileInfo{name: "migration02.sql"},
+		mockFileInfo{name: "migration03.sql"},
+		mockFileInfo{name: "migration04.sql"},
+		mockFileInfo{name: "migration05.sql"},
+	)
 
 	assert := assert(t)
-
 	instance := New(&mockAdapter{}, DefaultOptions)
-
-	instance.New("migration01")
-	instance.New("migration02")
-	instance.New("migration03")
-	instance.New("migration04")
-	instance.New("migration05")
-
 	applied, err := instance.MigrateToLatest()
 
 	assert.
@@ -319,17 +304,15 @@ func TestMigrataurRollback(t *testing.T) {
 }
 
 func TestMigrataurReset(t *testing.T) {
-	cleanUpMigrationsDir()
+	mockFSAdapter.hasFiles(
+		mockFileInfo{name: "migration01.sql"},
+		mockFileInfo{name: "migration02.sql"},
+		mockFileInfo{name: "migration03.sql"},
+		mockFileInfo{name: "migration04.sql"},
+	)
 
 	assert := assert(t)
-
 	instance := New(&mockAdapter{}, DefaultOptions)
-
-	instance.New("migration01")
-	instance.New("migration02")
-	instance.New("migration03")
-	instance.New("migration04")
-
 	applied, err := instance.MigrateToLatest()
 
 	assert.

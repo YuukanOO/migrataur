@@ -1,8 +1,6 @@
 package migrataur
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -85,21 +83,17 @@ func (a *assertInstance) applied(migrations []*Migration, names ...string) *asse
 	return a
 }
 
-func (a *assertInstance) exists(pathes ...string) *assertInstance {
-	path := filepath.Join(pathes...)
-
-	if _, err := os.Stat(path); os.IsNotExist(err) {
+func (a *assertInstance) exists(path string) *assertInstance {
+	if !mockFSAdapter.exists(path) {
 		a.t.Errorf("File %s does not exists", path)
 	}
 
 	return a
 }
 
-func (a *assertInstance) notExists(pathes ...string) *assertInstance {
-	path := filepath.Join(pathes...)
-
-	if _, err := os.Stat(path); err == nil {
-		a.t.Errorf("File %s exists", path)
+func (a *assertInstance) notExists(path string) *assertInstance {
+	if mockFSAdapter.exists(path) {
+		a.t.Errorf("File %s should not exists", path)
 	}
 
 	return a
