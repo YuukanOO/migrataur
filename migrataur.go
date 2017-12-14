@@ -18,7 +18,7 @@ const (
 	// dirUp when applying migrations
 	dirUp dir = iota
 	// dirDown when rolling them back
-	dirDown = iota
+	dirDown
 )
 
 // Migrataur represents an instance configurated for a particular use.
