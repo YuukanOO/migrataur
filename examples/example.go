@@ -2,12 +2,13 @@ package main
 
 import (
 	"database/sql"
-	"os"
-
+	"fmt"
 	"github.com/YuukanOO/migrataur"
 	adapter "github.com/YuukanOO/migrataur/adapters/sql"
 	"github.com/YuukanOO/migrataur/cmd"
 	_ "github.com/lib/pq"
+	"github.com/urfave/cli"
+	"os"
 )
 
 func main() {
@@ -23,7 +24,20 @@ func main() {
 
 	defer db.Close()
 
-	cli := cmd.For(migrataur.New(adapter.WithDBAndOptions(db, adapter.DefaultTableName, "${i}"), migrataur.DefaultOptions))
+	// Use cmd.For to creates an app with already populated commands
+	app := cmd.For(migrataur.New(adapter.WithDBAndOptions(db, adapter.DefaultTableName, "${i}"), migrataur.DefaultOptions))
 
-	cli.Run(os.Args)
+	// And append your own commands
+	app.Commands = append(app.Commands, []cli.Command{
+		{
+			Name:  "hello",
+			Usage: "Just say hello",
+			Action: func(ctx *cli.Context) error {
+				fmt.Println("Hello!")
+				return nil
+			},
+		},
+	}...)
+
+	app.Run(os.Args)
 }

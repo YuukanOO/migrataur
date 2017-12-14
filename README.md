@@ -6,9 +6,11 @@
 
 **migrataur** is a simple and easy to understand library to manage database migrations in Go.
 
-Instead of providing only a CLI, it exposes a simple API that you can use in your own application. A CLI is also at your disposal and was written using [urfave/cli](https://github.com/urfave/cli), have a look at the [example](examples/example.go) to find out more.
+It exposes a simple API that you can use in your own application. A CLI is also at your disposal and was written using [urfave/cli](https://github.com/urfave/cli), have a look at the [example](examples/example.go) to find out how to use it.
 
 ## Documentation
+
+### Library
 
 Documentation is available at [godoc](https://godoc.org/github.com/YuukanOO/migrataur) but here is a sneak peak:
 
@@ -65,6 +67,10 @@ func main() {
 }
 
 ```
+
+### Command
+
+Check [example.go](examples/example.go). Run the `docker-compose up -d` to starts the database used to test and then `go run example.go` to check available commands.
 
 ### But wait, how do I write migrations?
 
