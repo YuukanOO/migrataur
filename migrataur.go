@@ -110,7 +110,7 @@ func (m *Migrataur) Remove(rangeOrName string) ([]*Migration, error) {
 
 // GetAll retrieve all migrations for the current instance. It will list applied and pending migrations
 func (m *Migrataur) GetAll() ([]*Migration, error) {
-	m.Printf("Fetching migrations in %s", m.options.Directory)
+	m.Printf("Fetching migrations in:\n\t%s", m.options.Directory)
 
 	return m.getAllMigrations(dirUp)
 }

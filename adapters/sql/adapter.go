@@ -16,8 +16,11 @@ const DefaultTableName = "__migrations"
 
 // DefaultPlaceholder holds the default value for the sql placeholder
 // If you're on postgres, you should use ${i} where {i} will be replaced
-// by the arg position.
+// by the arg position. See PostgrePlaceholder.
 const DefaultPlaceholder = "?"
+
+// PostgrePlaceholder holds the default placeholder for pg databases.
+const PostgrePlaceholder = "${i}"
 
 // Adapter implements the interface defined by migrataur for common SQL databases
 type Adapter struct {

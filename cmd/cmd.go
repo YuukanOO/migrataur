@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/YuukanOO/migrataur"
 	"github.com/urfave/cli"
 )
@@ -16,7 +17,7 @@ func For(instance *migrataur.Migrataur) *cli.App {
 				migrations, err := instance.GetAll()
 
 				if err != nil {
-					return cli.NewExitError(err, 1)
+					return err
 				}
 
 				for _, m := range migrations {
@@ -33,7 +34,7 @@ func For(instance *migrataur.Migrataur) *cli.App {
 				_, err := instance.Init()
 
 				if err != nil {
-					return cli.NewExitError(err, 1)
+					return err
 				}
 
 				return nil
@@ -46,13 +47,13 @@ func For(instance *migrataur.Migrataur) *cli.App {
 				name := c.Args().First()
 
 				if name == "" {
-					return cli.NewExitError("You should provide a name!", 1)
+					return fmt.Errorf("you should provide a name")
 				}
 
 				_, err := instance.New(name)
 
 				if err != nil {
-					return cli.NewExitError(err, 1)
+					return err
 				}
 
 				return nil
@@ -65,13 +66,13 @@ func For(instance *migrataur.Migrataur) *cli.App {
 				nameOrRange := c.Args().First()
 
 				if nameOrRange == "" {
-					return cli.NewExitError("You should provide a name or range to remove!", 1)
+					return fmt.Errorf("you should provide a name or range to remove")
 				}
 
 				_, err := instance.Remove(nameOrRange)
 
 				if err != nil {
-					return cli.NewExitError(err, 1)
+					return err
 				}
 
 				return nil
@@ -84,7 +85,7 @@ func For(instance *migrataur.Migrataur) *cli.App {
 				_, err := instance.Reset()
 
 				if err != nil {
-					return cli.NewExitError(err, 1)
+					return err
 				}
 
 				return nil
@@ -95,6 +96,7 @@ func For(instance *migrataur.Migrataur) *cli.App {
 			Usage: "Migrates given range or migration. If you do not provide a range, it will apply all pending migrations.",
 			Action: func(c *cli.Context) error {
 				var err error
+
 				nameOrRange := c.Args().First()
 
 				if nameOrRange == "" {
@@ -104,7 +106,7 @@ func For(instance *migrataur.Migrataur) *cli.App {
 				}
 
 				if err != nil {
-					return cli.NewExitError(err, 1)
+					return err
 				}
 
 				return nil
@@ -117,13 +119,13 @@ func For(instance *migrataur.Migrataur) *cli.App {
 				nameOrRange := c.Args().First()
 
 				if nameOrRange == "" {
-					return cli.NewExitError("You should provide a name or range to rollback!", 1)
+					return fmt.Errorf("you should provide a name or range to rollback")
 				}
 
 				_, err := instance.Rollback(nameOrRange)
 
 				if err != nil {
-					return cli.NewExitError(err, 1)
+					return err
 				}
 
 				return nil

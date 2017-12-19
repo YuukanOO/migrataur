@@ -25,7 +25,7 @@ func main() {
 	defer db.Close()
 
 	// Use cmd.For to creates an app with already populated commands
-	app := cmd.For(migrataur.New(adapter.WithDBAndOptions(db, adapter.DefaultTableName, "${i}"), migrataur.DefaultOptions))
+	app := cmd.For(migrataur.New(adapter.WithDBAndOptions(db, adapter.DefaultTableName, adapter.PostgrePlaceholder), migrataur.DefaultOptions))
 
 	// And append your own commands
 	app.Commands = append(app.Commands, []cli.Command{
@@ -39,5 +39,7 @@ func main() {
 		},
 	}...)
 
-	app.Run(os.Args)
+	if err := app.Run(os.Args); err != nil {
+		panic(err)
+	}
 }
